@@ -1,13 +1,25 @@
 package ttrpgdash;
 
-import javafx.geometry.Insets;
+import java.io.File;
+
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.Label;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuBar;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.SeparatorMenuItem;
+import javafx.scene.control.SplitPane;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.*;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import ttrpgdash.map.MapCanvas;
@@ -16,8 +28,6 @@ import ttrpgdash.model.Entity;
 import ttrpgdash.model.GameState;
 import ttrpgdash.sidebar.SidebarPanel;
 import ttrpgdash.util.FileHelper;
-
-import java.io.File;
 
 /**
  * The DM's main window. Assembles:
@@ -250,8 +260,6 @@ public class MainWindow {
         viewDetails.setOnAction(e -> showDetailsPopup(token.getEntity()));
         menu.getItems().add(viewDetails);
 
-        menu.show(stage, javafx.stage.WindowEvent.ANY);
-        // Show at mouse position — JavaFX ContextMenu.show requires an anchor
         menu.show(mapCanvas, javafx.geometry.Side.TOP, 0, 0);
     }
 
