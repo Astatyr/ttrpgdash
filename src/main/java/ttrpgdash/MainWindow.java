@@ -1,0 +1,306 @@
+package ttrpgdash;
+
+import javafx.geometry.Insets;
+import javafx.geometry.Orientation;
+import javafx.geometry.Pos;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.stage.Stage;
+import ttrpgdash.map.MapCanvas;
+import ttrpgdash.map.Token;
+import ttrpgdash.model.Entity;
+import ttrpgdash.model.GameState;
+import ttrpgdash.sidebar.SidebarPanel;
+import ttrpgdash.util.FileHelper;
+
+import java.io.File;
+
+/**
+ * The DM's main window. Assembles:
+ *   - MenuBar (Options → Clear All, Map → Load Map, Map → Set Width)
+ *   - SidebarPanel (left)
+ *   - MapCanvas (centre)
+ *   - Status bar (bottom)
+ *
+ * MainWindow owns the GameState and passes it to child components.
+ * It wires up all the cross-component callbacks:
+ *   - Sidebar "Place" → MapCanvas pending entity
+ *   - MapCanvas token right-click → context menu (buff/debuff, delete from map)
+ *   - Sidebar "Details" → open Details.png in a popup
+ */
+public class MainWindow {
+
+    // ── State ─────────────────────────────────────────────────────────────────
+
+    private final GameState    gameState;
+    private final Stage        stage;
+
+    // ── Components ────────────────────────────────────────────────────────────
+
+    private final MapCanvas     mapCanvas;
+    private final SidebarPanel  sidebarPanel;
+
+    // ── Status bar ────────────────────────────────────────────────────────────
+
+    private final Label statusLabel = new Label("Ready");
+
+    // ── Constructor ───────────────────────────────────────────────────────────
+
+    public MainWindow(Stage stage, GameState gameState) {
+        this.stage     = stage;
+        this.gameState = gameState;
+
+        mapCanvas    = new MapCanvas(gameState);
+        sidebarPanel = new SidebarPanel(gameState);
+
+        buildAndShow();
+    }
+
+    // ── Build ─────────────────────────────────────────────────────────────────
+
+    private void buildAndShow() {
+        // ── Menu bar ──────────────────────────────────────────────────────────
+        MenuBar menuBar = buildMenuBar();
+
+        // ── Sidebar wiring ────────────────────────────────────────────────────
+        sidebarPanel.setOwnerStage(stage);
+
+        sidebarPanel.setOnPlaceEntity(entity -> {
+            mapCanvas.setPendingEntity(entity);
+            setStatus("Click on the map to place: " + entity.getName());
+        });
+
+        sidebarPanel.setOnDetailsEntity(this::showDetailsPopup);
+
+        sidebarPanel.setOnEntitiesChanged(() -> {
+            mapCanvas.syncTokens();
+            setStatus("Entities updated.");
+        });
+
+        // ── Map canvas wiring ─────────────────────────────────────────────────
+        mapCanvas.setOnTokenRightClick(this::showTokenContextMenu);
+
+        // ── Layout: sidebar left, map centre ──────────────────────────────────
+        SplitPane splitPane = new SplitPane();
+        splitPane.setOrientation(Orientation.HORIZONTAL);
+        splitPane.getItems().addAll(sidebarPanel, mapCanvas);
+        splitPane.setDividerPositions(0.22);
+        SplitPane.setResizableWithParent(sidebarPanel, false);
+
+        // ── Status bar ────────────────────────────────────────────────────────
+        statusLabel.setStyle("-fx-text-fill: #888; -fx-font-size: 11px; -fx-padding: 3 8 3 8;");
+        HBox statusBar = new HBox(statusLabel);
+        statusBar.setStyle("-fx-background-color: #0d0d1a; -fx-border-color: #1a1a3a; -fx-border-width: 1 0 0 0;");
+        statusBar.setAlignment(Pos.CENTER_LEFT);
+
+        // ── Root ──────────────────────────────────────────────────────────────
+        BorderPane root = new BorderPane();
+        root.setTop(menuBar);
+        root.setCenter(splitPane);
+        root.setBottom(statusBar);
+        root.setStyle("-fx-background-color: #0d0d1a;");
+
+        // ── Scene ─────────────────────────────────────────────────────────────
+        Scene scene = new Scene(root, 1280, 800);
+        scene.setFill(Color.rgb(13, 13, 26));
+
+        stage.setScene(scene);
+        stage.setTitle("TTRPG Dash — DM View");
+        stage.setMinWidth(800);
+        stage.setMinHeight(500);
+
+        // Prevent accidental close — require confirmation
+        stage.setOnCloseRequest(e -> {
+            e.consume();
+            confirmClose();
+        });
+
+        stage.show();
+
+        // ── Load saved state ──────────────────────────────────────────────────
+        mapCanvas.reloadFromState();
+        sidebarPanel.refresh();
+        setStatus("Session loaded. " + gameState.getPlayers().size() + " players, "
+                + gameState.getCharacters().size() + " characters.");
+    }
+
+    // ── Menu bar ──────────────────────────────────────────────────────────────
+
+    private MenuBar buildMenuBar() {
+        MenuBar bar = new MenuBar();
+        bar.setStyle("-fx-background-color: #16163a;");
+
+        // ── Map menu ──────────────────────────────────────────────────────────
+        Menu mapMenu = new Menu("Map");
+
+        MenuItem loadMap = new MenuItem("Load Map PNG…");
+        loadMap.setOnAction(e -> loadMapFromFile());
+
+        MenuItem setWidth = new MenuItem("Set Map Width in Feet…");
+        setWidth.setOnAction(e -> promptMapWidth());
+
+        MenuItem fitMap = new MenuItem("Fit Map to Window");
+        fitMap.setOnAction(e -> mapCanvas.reloadFromState());
+
+        mapMenu.getItems().addAll(loadMap, setWidth, new SeparatorMenuItem(), fitMap);
+
+        // ── Options menu ──────────────────────────────────────────────────────
+        Menu optionsMenu = new Menu("Options");
+
+        MenuItem clearPositions = new MenuItem("Clear Token Positions");
+        clearPositions.setOnAction(e -> {
+            gameState.clearMapPositions();
+            mapCanvas.syncTokens();
+            setStatus("Token positions cleared.");
+        });
+
+        MenuItem clearAll = new MenuItem("Clear All…");
+        clearAll.setOnAction(e -> {
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
+                    "This will remove all entities and reset the map. Continue?",
+                    ButtonType.YES, ButtonType.NO);
+            confirm.setTitle("Clear All");
+            confirm.showAndWait().ifPresent(btn -> {
+                if (btn == ButtonType.YES) {
+                    gameState.clearAll();
+                    mapCanvas.syncTokens();
+                    sidebarPanel.refresh();
+                    setStatus("Session cleared.");
+                }
+            });
+        });
+
+        optionsMenu.getItems().addAll(clearPositions, new SeparatorMenuItem(), clearAll);
+
+        bar.getMenus().addAll(mapMenu, optionsMenu);
+        return bar;
+    }
+
+    // ── Map loading ───────────────────────────────────────────────────────────
+
+    private void loadMapFromFile() {
+        File file = FileHelper.browseForMap(stage);
+        if (file == null) return;
+        gameState.setMapImagePath(file.getAbsolutePath());
+        mapCanvas.loadMap(file.getAbsolutePath());
+        setStatus("Map loaded: " + file.getName());
+    }
+
+    private void promptMapWidth() {
+        TextInputDialog dialog = new TextInputDialog(
+                String.valueOf((int) gameState.getMapWidthInFeet()));
+        dialog.setTitle("Map Width");
+        dialog.setHeaderText("How wide is the map in feet?");
+        dialog.setContentText("Width in feet:");
+        dialog.showAndWait().ifPresent(val -> {
+            try {
+                double feet = Double.parseDouble(val);
+                gameState.setMapWidthInFeet(feet);
+                mapCanvas.onMapWidthChanged();
+                setStatus("Map width set to " + feet + " ft.");
+            } catch (NumberFormatException ex) {
+                setStatus("Invalid value — map width unchanged.");
+            }
+        });
+    }
+
+    // ── Token context menu (right-click on token) ─────────────────────────────
+
+    private void showTokenContextMenu(Token token) {
+        ContextMenu menu = new ContextMenu();
+
+        // Entity name header (disabled, just for display)
+        MenuItem nameItem = new MenuItem(token.getEntity().getName());
+        nameItem.setDisable(true);
+        menu.getItems().add(nameItem);
+        menu.getItems().add(new SeparatorMenuItem());
+
+        // ── Buff / Debuff submenu ─────────────────────────────────────────────
+        Menu statusMenu = new Menu("Buff / Debuff");
+        String[] statuses = {"poisoned","stunned","burning","frozen","bleeding","cursed","invisible","blessed","exhausted"};
+        for (String s : statuses) {
+            boolean active = token.getEntity().getStatusEffects().contains(s);
+            MenuItem item = new MenuItem((active ? "✓ " : "    ") + s);
+            item.setOnAction(e -> {
+                if (active) token.getEntity().removeStatusEffect(s);
+                else        token.getEntity().addStatusEffect(s);
+                gameState.entityChanged();
+                // Rebuild context menu to reflect new state (user must re-right-click)
+            });
+            statusMenu.getItems().add(item);
+        }
+        menu.getItems().add(statusMenu);
+
+        // ── Remove from map ───────────────────────────────────────────────────
+        MenuItem removeFromMap = new MenuItem("Remove from Map");
+        removeFromMap.setOnAction(e -> {
+            mapCanvas.removeSelectedToken();
+            sidebarPanel.disarmCard();
+            setStatus(token.getEntity().getName() + " removed from map.");
+        });
+        menu.getItems().add(new SeparatorMenuItem());
+        menu.getItems().add(removeFromMap);
+
+        // ── Details ───────────────────────────────────────────────────────────
+        MenuItem viewDetails = new MenuItem("View Details");
+        viewDetails.setOnAction(e -> showDetailsPopup(token.getEntity()));
+        menu.getItems().add(viewDetails);
+
+        menu.show(stage, javafx.stage.WindowEvent.ANY);
+        // Show at mouse position — JavaFX ContextMenu.show requires an anchor
+        menu.show(mapCanvas, javafx.geometry.Side.TOP, 0, 0);
+    }
+
+    // ── Details popup ─────────────────────────────────────────────────────────
+
+    private void showDetailsPopup(Entity entity) {
+        String detailsPath = entity.getDetailsPath();
+        if (!FileHelper.fileExists(detailsPath)) {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION,
+                    "No Details.png found for " + entity.getName() + ".\n\n"
+                    + "Place a Details.png inside the character folder.", ButtonType.OK);
+            alert.setTitle("No Details");
+            alert.showAndWait();
+            return;
+        }
+
+        Stage popup = new Stage();
+        popup.setTitle("Details — " + entity.getName());
+        popup.initOwner(stage);
+
+        Image img = FileHelper.loadImage(detailsPath);
+        ImageView view = new ImageView(img);
+        view.setPreserveRatio(true);
+        view.setFitWidth(Math.min(img.getWidth(), 900));
+        view.setFitHeight(Math.min(img.getHeight(), 700));
+
+        ScrollPane scroll = new ScrollPane(view);
+        scroll.setFitToWidth(true);
+
+        Scene scene = new Scene(scroll);
+        popup.setScene(scene);
+        popup.show();
+    }
+
+    // ── Close confirmation ────────────────────────────────────────────────────
+
+    private void confirmClose() {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION,
+                "Close TTRPG Dash? Your session is saved automatically.",
+                ButtonType.YES, ButtonType.NO);
+        alert.setTitle("Exit");
+        alert.showAndWait().ifPresent(btn -> {
+            if (btn == ButtonType.YES) stage.close();
+        });
+    }
+
+    // ── Status bar ────────────────────────────────────────────────────────────
+
+    private void setStatus(String message) {
+        statusLabel.setText(message);
+    }
+}

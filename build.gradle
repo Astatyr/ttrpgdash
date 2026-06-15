@@ -1,0 +1,37 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'org.openjfx.javafxplugin' version '0.1.0'
+}
+
+group = 'ttrpgdash'
+version = '1.0'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+application {
+    mainClass = 'ttrpgdash.App'
+}
+
+javafx {
+    version = '21'
+    modules = ['javafx.controls', 'javafx.fxml', 'javafx.swing']
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Gson for reading/writing state.json
+    implementation 'com.google.code.gson:gson:2.10.1'
+}
+
+// Ensure the assets/ and data/ folders are accessible at runtime
+// from the project root (where you run `gradle run`)
+run {
+    workingDir = projectDir
+}
