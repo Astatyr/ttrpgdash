@@ -19,9 +19,7 @@ public class App extends Application {
     public void start(Stage primaryStage) {
         // Load persisted state (or start fresh if none exists)
         GameState gameState = JsonStateManager.load();
-
-        // Build and show the main DM window
-        new MainWindow(primaryStage, gameState);
+        new MainWindow(gameState).show(primaryStage);
     }
 
     public static void main(String[] args) {

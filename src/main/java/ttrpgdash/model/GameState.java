@@ -29,10 +29,10 @@ public class GameState {
     private double mapWidthInFeet;
 
     /** All player characters in this session. */
-    private List<PlayerEntity> players;
+    private final List<PlayerEntity> players;
 
     /** All NPCs, enemies, and creatures in this session. */
-    private List<CharacterEntity> characters;
+    private final List<CharacterEntity> characters;
 
     /**
      * Creates a fresh GameState with default values.

@@ -46,7 +46,7 @@ import ttrpgdash.util.FileHelper;
 public class MainWindow {
 
     private final GameState gameState;
-    private final Stage stage;
+    private Stage stage;
 
     private final MapCanvas mapCanvas;
     private final SidebarPanel sidebarPanel;
@@ -54,19 +54,21 @@ public class MainWindow {
     private final Label statusLabel = new Label("Ready");
 
     /**
-     * Builds and displays the main window with the given stage and game state.
+     * Initialises the window components for the given game state.
+     * Call {@link #show(Stage)} afterwards to display the window.
      */
-    public MainWindow(Stage stage, GameState gameState) {
-        this.stage = stage;
+    public MainWindow(GameState gameState) {
         this.gameState = gameState;
 
         mapCanvas = new MapCanvas(gameState);
         sidebarPanel = new SidebarPanel(gameState);
-
-        buildAndShow();
     }
 
-    private void buildAndShow() {
+    /**
+     * Builds and displays the main window on the given stage.
+     */
+    public void show(Stage stage) {
+        this.stage = stage;
         MenuBar menuBar = buildMenuBar();
 
         sidebarPanel.setOwnerStage(stage);

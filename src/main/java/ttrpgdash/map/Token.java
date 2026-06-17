@@ -20,7 +20,7 @@ import ttrpgdash.util.FileHelper;
  * onto the MapCanvas GraphicsContext. This gives us full control over layering,
  * especially for mounted/riding entities.
  */
-public class Token {
+public final class Token {
 
     private final Entity entity;
 

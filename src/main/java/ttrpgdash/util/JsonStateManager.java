@@ -144,7 +144,7 @@ public class JsonStateManager {
             if (root.has("mapWidthInFeet")) {
                 feetField.set(state, root.get("mapWidthInFeet").getAsDouble());
             }
-        } catch (Exception e) {
+        } catch (NoSuchFieldException | IllegalAccessException e) {
             System.err.println("[JsonStateManager] Reflection error during load: " + e.getMessage());
         }
     }
