@@ -1,6 +1,29 @@
 {
   "mapImagePath": "C:\\Users\\Justin.Halim\\OneDrive - Arup\\Pictures\\Screenshots\\Screenshot 2026-06-12 165523.png",
-  "mapWidthInFeet": 100.0,
-  "players": [],
+  "mapWidthInFeet": 200.0,
+  "players": [
+    {
+      "id": "birdie_19ed4a50fd7",
+      "name": "Birdie",
+      "avatarPath": "C:\\Coding\\dash\\assets\\characters\\Birdie\\Avatar.png",
+      "sizeInFeet": 5.0,
+      "xFraction": 0.09859154929577464,
+      "yFraction": 0.3806189995021373,
+      "onMap": true,
+      "statusEffects": [],
+      "entityType": "player"
+    },
+    {
+      "id": "birdie_19ed4a57983",
+      "name": "Birdie",
+      "avatarPath": "C:\\Coding\\dash\\assets\\characters\\Birdie\\Avatar.png",
+      "sizeInFeet": 10.0,
+      "xFraction": 0.1006036217303823,
+      "yFraction": 0.48236417038099755,
+      "onMap": true,
+      "statusEffects": [],
+      "entityType": "player"
+    }
+  ],
   "characters": []
 }

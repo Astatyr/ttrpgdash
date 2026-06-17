@@ -1,11 +1,11 @@
 package ttrpgdash.map;
 
-import javafx.geometry.Point2D;
+import java.util.function.Consumer;
+
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
 import javafx.scene.input.MouseButton;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
@@ -13,8 +13,6 @@ import javafx.scene.text.Font;
 import ttrpgdash.model.Entity;
 import ttrpgdash.model.GameState;
 import ttrpgdash.util.FileHelper;
-
-import java.util.function.Consumer;
 
 /**
  * The main interactive map surface.

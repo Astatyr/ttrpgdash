@@ -26,6 +26,7 @@ import ttrpgdash.map.MapCanvas;
 import ttrpgdash.map.Token;
 import ttrpgdash.model.Entity;
 import ttrpgdash.model.GameState;
+import ttrpgdash.model.StatusEffect;
 import ttrpgdash.sidebar.SidebarPanel;
 import ttrpgdash.util.FileHelper;
 
@@ -186,7 +187,17 @@ public class MainWindow {
 
         optionsMenu.getItems().addAll(clearPositions, new SeparatorMenuItem(), clearAll);
 
-        bar.getMenus().addAll(mapMenu, optionsMenu);
+        // ── Status Effect menu ──────────────────────────────────────────────────────
+        Menu statusMenu = new Menu("Status Effects");
+        for (String effect : StatusEffect.ALL) {
+            MenuItem item = new MenuItem(effect);
+            item.setOnAction(e -> {
+                // Handle status effect action
+            });
+            statusMenu.getItems().add(item);
+        }
+
+        bar.getMenus().addAll(mapMenu, optionsMenu, statusMenu);
         return bar;
     }
 

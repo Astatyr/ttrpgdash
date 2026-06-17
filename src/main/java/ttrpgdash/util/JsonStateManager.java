@@ -1,14 +1,21 @@
 package ttrpgdash.util;
 
-import com.google.gson.*;
-import com.google.gson.reflect.TypeToken;
-import ttrpgdash.model.*;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
-import java.io.*;
-import java.lang.reflect.Type;
-import java.nio.file.*;
-import java.util.ArrayList;
-import java.util.List;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
+
+import ttrpgdash.model.CharacterEntity;
+import ttrpgdash.model.GameState;
+import ttrpgdash.model.PlayerEntity;
 
 /**
  * Handles reading and writing of data/state.json.

@@ -1,20 +1,23 @@
 package ttrpgdash.sidebar;
 
+import java.io.File;
+import java.util.function.Consumer;
+
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.*;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextInputDialog;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import ttrpgdash.model.*;
+import ttrpgdash.model.CharacterEntity;
+import ttrpgdash.model.Entity;
+import ttrpgdash.model.GameState;
+import ttrpgdash.model.PlayerEntity;
 import ttrpgdash.util.FileHelper;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Consumer;
 
 /**
  * The sidebar panel on the left of the main window.

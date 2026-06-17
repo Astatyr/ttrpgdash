@@ -115,7 +115,11 @@ public abstract class Entity {
     public void setStatusEffects(List<String> fx)  { this.statusEffects = fx; }
 
     public void addStatusEffect(String effect) {
-        if (!statusEffects.contains(effect)) statusEffects.add(effect);
+        if (!StatusEffect.isValid(effect)) return;
+
+        if (!statusEffects.contains(effect)) {
+            statusEffects.add(effect);
+        }
     }
 
     public void removeStatusEffect(String effect) {
