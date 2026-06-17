@@ -15,13 +15,10 @@ import javafx.stage.Stage;
  */
 public class FileHelper {
 
-    // ── Asset paths (relative to working directory) ──────────────────────────
-    public static final String ASSETS_DIR     = "assets";
+    public static final String ASSETS_DIR = "assets";
     public static final String CHARACTERS_DIR = ASSETS_DIR + File.separator + "characters";
-    public static final String MAPS_DIR       = ASSETS_DIR + File.separator + "maps";
-    public static final String MUSIC_DIR      = ASSETS_DIR + File.separator + "music";
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    public static final String MAPS_DIR = ASSETS_DIR + File.separator + "maps";
+    public static final String MUSIC_DIR = ASSETS_DIR + File.separator + "music";
 
     private static File safeDir(File dir, File fallback) {
         if (dir != null && dir.exists() && dir.isDirectory()) {
@@ -33,8 +30,9 @@ public class FileHelper {
         return new File(System.getProperty("user.home"));
     }
 
-    // ── File choosers ─────────────────────────────────────────────────────────
-
+    /**
+     * Opens a file chooser dialog for selecting a PNG image.
+     */
     public static File browseForImage(Stage owner, String title) {
         FileChooser chooser = new FileChooser();
         chooser.setTitle(title);
@@ -50,11 +48,16 @@ public class FileHelper {
         chooser.setInitialDirectory(initial);
 
         File file = chooser.showOpenDialog(owner);
-        if (file == null || !file.exists()) return null;
+        if (file == null || !file.exists()) {
+            return null;
+        }
 
         return file;
     }
 
+    /**
+     * Opens a file chooser dialog for selecting a map PNG.
+     */
     public static File browseForMap(Stage owner) {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Select Map Image");
@@ -70,11 +73,16 @@ public class FileHelper {
         chooser.setInitialDirectory(initial);
 
         File file = chooser.showOpenDialog(owner);
-        if (file == null || !file.exists()) return null;
+        if (file == null || !file.exists()) {
+            return null;
+        }
 
         return file;
     }
 
+    /**
+     * Opens a directory chooser dialog for selecting a character folder.
+     */
     public static File browseForCharacterFolder(Stage owner) {
         DirectoryChooser chooser = new DirectoryChooser();
         chooser.setTitle("Select Character Folder");
@@ -95,10 +103,13 @@ public class FileHelper {
         return dir;
     }
 
-    // ── Image loading ─────────────────────────────────────────────────────────
-
+    /**
+     * Loads an image from the given file path, returning a default avatar on failure.
+     */
     public static Image loadImage(String filePath) {
-        if (filePath == null) return loadDefaultAvatar();
+        if (filePath == null) {
+            return loadDefaultAvatar();
+        }
 
         File file = new File(filePath);
 
@@ -115,10 +126,13 @@ public class FileHelper {
         }
     }
 
+    /**
+     * Returns a 1x1 transparent PNG as a fallback avatar image.
+     */
     public static Image loadDefaultAvatar() {
         String dataUri =
-                "data:image/png;base64," +
-                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwADhQGAWjR9awAAAABJRU5ErkJggg==";
+                "data:image/png;base64,"
+                + "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwADhQGAWjR9awAAAABJRU5ErkJggg==";
 
         try {
             return new Image(dataUri);
@@ -126,8 +140,6 @@ public class FileHelper {
             return null;
         }
     }
-
-    // ── Path helpers ──────────────────────────────────────────────────────────
 
     public static String avatarPathFor(String folder) {
         return folder + File.separator + "Avatar.png";
@@ -141,6 +153,9 @@ public class FileHelper {
         return path != null && new File(path).exists();
     }
 
+    /**
+     * Generates a unique ID for an entity based on its name and current time.
+     */
     public static String generateId(String name) {
         String base = name.toLowerCase().replaceAll("[^a-z0-9]", "");
         return base + "_" + Long.toHexString(System.currentTimeMillis());

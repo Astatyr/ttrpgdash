@@ -1,18 +1,21 @@
 package ttrpgdash.sidebar;
 
+import java.util.function.Consumer;
+
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Tooltip;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.*;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import ttrpgdash.model.Entity;
 import ttrpgdash.util.FileHelper;
-
-import java.util.function.Consumer;
 
 /**
  * A single row in the sidebar representing one Entity (player or character).
@@ -29,14 +32,13 @@ public class EntityCard extends HBox {
 
     private final Entity entity;
 
-    // ── Callbacks ─────────────────────────────────────────────────────────────
-
-    private Runnable         onPlace;
+    private Runnable onPlace;
     private Consumer<Entity> onDetails;
     private Consumer<Entity> onDelete;
 
-    // ── Constructor ───────────────────────────────────────────────────────────
-
+    /**
+     * Creates an entity card for the given entity.
+     */
     public EntityCard(Entity entity) {
         this.entity = entity;
         buildUI();
@@ -49,10 +51,8 @@ public class EntityCard extends HBox {
         setStyle("-fx-background-color: #1e1e2e; -fx-border-color: #2a2a4a; "
                 + "-fx-border-width: 0 0 1 0;");
 
-        // ── Avatar ────────────────────────────────────────────────────────────
         StackPane avatarPane = buildAvatar();
 
-        // ── Name + type ───────────────────────────────────────────────────────
         VBox nameBox = new VBox(2);
         Label nameLabel = new Label(entity.getName());
         nameLabel.setStyle("-fx-text-fill: #e0e0e0; -fx-font-size: 13px; -fx-font-weight: bold;");
@@ -65,14 +65,25 @@ public class EntityCard extends HBox {
         nameBox.getChildren().addAll(nameLabel, typeLabel);
         HBox.setHgrow(nameBox, Priority.ALWAYS);
 
-        // ── Buttons ───────────────────────────────────────────────────────────
-        Button placeBtn   = makeBtn("Place",   "#4a90d9", () -> { if (onPlace   != null) onPlace.run(); });
-        Button detailsBtn = makeBtn("Details", "#7a6a9e", () -> { if (onDetails != null) onDetails.accept(entity); });
-        Button deleteBtn  = makeBtn("✕",       "#c0392b", () -> { if (onDelete  != null) onDelete.accept(entity); });
+        Button placeBtn = makeBtn("Place", "#4a90d9", () -> {
+            if (onPlace != null) {
+                onPlace.run();
+            }
+        });
+        Button detailsBtn = makeBtn("Details", "#7a6a9e", () -> {
+            if (onDetails != null) {
+                onDetails.accept(entity);
+            }
+        });
+        Button deleteBtn = makeBtn("✕", "#c0392b", () -> {
+            if (onDelete != null) {
+                onDelete.accept(entity);
+            }
+        });
 
-        Tooltip.install(placeBtn,   new Tooltip("Click map to place token"));
+        Tooltip.install(placeBtn, new Tooltip("Click map to place token"));
         Tooltip.install(detailsBtn, new Tooltip("View Details.png"));
-        Tooltip.install(deleteBtn,  new Tooltip("Remove from session"));
+        Tooltip.install(deleteBtn, new Tooltip("Remove from session"));
 
         getChildren().addAll(avatarPane, nameBox, placeBtn, detailsBtn, deleteBtn);
     }
@@ -82,8 +93,6 @@ public class EntityCard extends HBox {
         StackPane pane = new StackPane();
         pane.setMinSize(36, 36);
         pane.setMaxSize(36, 36);
-
-        Circle clip = new Circle(18, 18, 18);
 
         if (FileHelper.fileExists(entity.getAvatarPath())) {
             ImageView img = new ImageView(FileHelper.loadImage(entity.getAvatarPath()));
@@ -125,13 +134,17 @@ public class EntityCard extends HBox {
         return btn;
     }
 
-    // ── Callback setters ──────────────────────────────────────────────────────
+    public void setOnPlace(Runnable handler) {
+        this.onPlace = handler;
+    }
 
-    public void setOnPlace(Runnable handler)          { this.onPlace   = handler; }
-    public void setOnDetails(Consumer<Entity> handler) { this.onDetails = handler; }
-    public void setOnDelete(Consumer<Entity> handler)  { this.onDelete  = handler; }
+    public void setOnDetails(Consumer<Entity> handler) {
+        this.onDetails = handler;
+    }
 
-    // ── Highlight (when armed for placement) ──────────────────────────────────
+    public void setOnDelete(Consumer<Entity> handler) {
+        this.onDelete = handler;
+    }
 
     public void setArmed(boolean armed) {
         setStyle("-fx-background-color: " + (armed ? "#1a2a1a" : "#1e1e2e")
@@ -139,5 +152,7 @@ public class EntityCard extends HBox {
                 + "; -fx-border-width: 0 0 1 0;");
     }
 
-    public Entity getEntity() { return entity; }
+    public Entity getEntity() {
+        return entity;
+    }
 }

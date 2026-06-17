@@ -36,8 +36,9 @@ public class JsonStateManager {
             .setPrettyPrinting()
             .create();
 
-    // ── Save ──────────────────────────────────────────────────────────────────
-
+    /**
+     * Serialises the given GameState to data/state.json.
+     */
     public static void save(GameState state) {
         try {
             Path path = Paths.get(STATE_FILE);
@@ -73,8 +74,9 @@ public class JsonStateManager {
         }
     }
 
-    // ── Load ──────────────────────────────────────────────────────────────────
-
+    /**
+     * Deserialises GameState from data/state.json, or returns a fresh state if missing.
+     */
     public static GameState load() {
         Path path = Paths.get(STATE_FILE);
 

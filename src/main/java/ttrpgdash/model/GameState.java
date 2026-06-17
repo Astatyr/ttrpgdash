@@ -1,10 +1,10 @@
 package ttrpgdash.model;
 
-import ttrpgdash.util.JsonStateManager;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
+import ttrpgdash.util.JsonStateManager;
 
 /**
  * Single source of truth for the entire session.
@@ -18,8 +18,6 @@ import java.util.Optional;
  */
 public class GameState {
 
-    // ── Map configuration ─────────────────────────────────────────────────────
-
     /** Absolute path to the currently loaded map image. Null = no map loaded. */
     private String mapImagePath;
 
@@ -30,16 +28,15 @@ public class GameState {
      */
     private double mapWidthInFeet;
 
-    // ── Entity lists ──────────────────────────────────────────────────────────
-
     /** All player characters in this session. */
     private List<PlayerEntity> players;
 
     /** All NPCs, enemies, and creatures in this session. */
     private List<CharacterEntity> characters;
 
-    // ── Constructor (used by Gson on deserialisation too) ─────────────────────
-
+    /**
+     * Creates a fresh GameState with default values.
+     */
     public GameState() {
         this.mapImagePath = null;
         this.mapWidthInFeet = 100.0;
@@ -47,43 +44,63 @@ public class GameState {
         this.characters = new ArrayList<>();
     }
 
-    // ── Map config helpers ────────────────────────────────────────────────────
+    public String getMapImagePath() {
+        return mapImagePath;
+    }
 
-    public String getMapImagePath()                    { return mapImagePath; }
-    public void   setMapImagePath(String path)         { this.mapImagePath = path; save(); }
+    public void setMapImagePath(String path) {
+        this.mapImagePath = path;
+        save();
+    }
 
-    public double getMapWidthInFeet()                  { return mapWidthInFeet; }
-    public void   setMapWidthInFeet(double feet)       { this.mapWidthInFeet = feet; save(); }
+    public double getMapWidthInFeet() {
+        return mapWidthInFeet;
+    }
 
-    // ── Player helpers ────────────────────────────────────────────────────────
+    public void setMapWidthInFeet(double feet) {
+        this.mapWidthInFeet = feet;
+        save();
+    }
 
-    public List<PlayerEntity> getPlayers()             { return players; }
+    public List<PlayerEntity> getPlayers() {
+        return players;
+    }
 
+    /**
+     * Adds a player to the session and persists the change.
+     */
     public void addPlayer(PlayerEntity player) {
         players.add(player);
         save();
     }
 
+    /**
+     * Removes a player by ID and persists the change.
+     */
     public void removePlayer(String id) {
         players.removeIf(p -> p.getId().equals(id));
         save();
     }
 
-    // ── Character (NPC) helpers ───────────────────────────────────────────────
+    public List<CharacterEntity> getCharacters() {
+        return characters;
+    }
 
-    public List<CharacterEntity> getCharacters()       { return characters; }
-
+    /**
+     * Adds a character (NPC) to the session and persists the change.
+     */
     public void addCharacter(CharacterEntity character) {
         characters.add(character);
         save();
     }
 
+    /**
+     * Removes a character by ID and persists the change.
+     */
     public void removeCharacter(String id) {
         characters.removeIf(c -> c.getId().equals(id));
         save();
     }
-
-    // ── Unified entity lookup ─────────────────────────────────────────────────
 
     /**
      * Returns all entities (players + characters) as a flat list.
@@ -114,8 +131,6 @@ public class GameState {
         save();
     }
 
-    // ── Clear all ─────────────────────────────────────────────────────────────
-
     /**
      * Removes all entities and resets the map. Used by Options → Clear All.
      */
@@ -140,8 +155,6 @@ public class GameState {
         });
         save();
     }
-
-    // ── Persistence ───────────────────────────────────────────────────────────
 
     /** Saves the current state to data/state.json. Called automatically by all mutators. */
     public void save() {

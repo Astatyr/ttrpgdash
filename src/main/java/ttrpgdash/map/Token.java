@@ -22,30 +22,21 @@ import ttrpgdash.util.FileHelper;
  */
 public class Token {
 
-    // ── Associated entity ─────────────────────────────────────────────────────
-
     private final Entity entity;
-
-    // ── Canvas position (centre, in canvas pixel coords) ──────────────────────
 
     private double cx;
     private double cy;
 
-    // ── Visual size ───────────────────────────────────────────────────────────
-
     /** Radius in canvas pixels. Recalculated whenever map scale changes. */
     private double radius;
 
-    // ── Avatar image (cached) ─────────────────────────────────────────────────
-
     private Image avatarImage;
-
-    // ── Selection state ───────────────────────────────────────────────────────
 
     private boolean selected;
 
-    // ── Constructor ───────────────────────────────────────────────────────────
-
+    /**
+     * Creates a token for the given entity at the specified canvas position and radius.
+     */
     public Token(Entity entity, double cx, double cy, double radius) {
         this.entity = entity;
         this.cx = cx;
@@ -55,14 +46,10 @@ public class Token {
         reloadAvatar();
     }
 
-    // ── Avatar ────────────────────────────────────────────────────────────────
-
     /** Reloads the avatar image from disk. Call after the entity's avatarPath changes. */
     public void reloadAvatar() {
         avatarImage = FileHelper.loadImage(entity.getAvatarPath());
     }
-
-    // ── Drawing ───────────────────────────────────────────────────────────────
 
     /**
      * Draws this token onto the given GraphicsContext.
@@ -122,7 +109,9 @@ public class Token {
     /** Draws small coloured dots above the token for each active status effect. */
     private void drawStatusDots(GraphicsContext gc) {
         var effects = entity.getStatusEffects();
-        if (effects.isEmpty()) return;
+        if (effects.isEmpty()) {
+            return;
+        }
 
         int maxDots = Math.min(effects.size(), 4);
         double dotRadius = Math.max(4, radius * 0.18);
@@ -145,20 +134,18 @@ public class Token {
     /** Maps a status effect name to a colour for the dot indicator. */
     private Color statusColor(String effect) {
         return switch (effect.toLowerCase()) {
-            case "poisoned"   -> Color.LIMEGREEN;
-            case "stunned"    -> Color.ORANGE;
-            case "burning"    -> Color.ORANGERED;
-            case "frozen"     -> Color.DEEPSKYBLUE;
-            case "bleeding"   -> Color.CRIMSON;
-            case "cursed"     -> Color.MEDIUMPURPLE;
-            case "invisible"  -> Color.LIGHTGRAY;
-            case "blessed"    -> Color.GOLD;
-            case "exhausted"  -> Color.SADDLEBROWN;
-            default           -> Color.WHITE;
+        case "poisoned" -> Color.LIMEGREEN;
+        case "stunned" -> Color.ORANGE;
+        case "burning" -> Color.ORANGERED;
+        case "frozen" -> Color.DEEPSKYBLUE;
+        case "bleeding" -> Color.CRIMSON;
+        case "cursed" -> Color.MEDIUMPURPLE;
+        case "invisible" -> Color.LIGHTGRAY;
+        case "blessed" -> Color.GOLD;
+        case "exhausted" -> Color.SADDLEBROWN;
+        default -> Color.WHITE;
         };
     }
-
-    // ── Hit testing ───────────────────────────────────────────────────────────
 
     /**
      * Returns true if the given canvas point is inside this token's circle.
@@ -182,19 +169,39 @@ public class Token {
         return dist < (this.radius + other.radius);
     }
 
-    // ── Getters & setters ─────────────────────────────────────────────────────
+    public Entity getEntity() {
+        return entity;
+    }
 
-    public Entity getEntity()             { return entity; }
+    public double getCx() {
+        return cx;
+    }
 
-    public double getCx()                 { return cx; }
-    public void   setCx(double cx)        { this.cx = cx; }
+    public void setCx(double cx) {
+        this.cx = cx;
+    }
 
-    public double getCy()                 { return cy; }
-    public void   setCy(double cy)        { this.cy = cy; }
+    public double getCy() {
+        return cy;
+    }
 
-    public double getRadius()             { return radius; }
-    public void   setRadius(double r)     { this.radius = r; }
+    public void setCy(double cy) {
+        this.cy = cy;
+    }
 
-    public boolean isSelected()           { return selected; }
-    public void    setSelected(boolean s) { this.selected = s; }
+    public double getRadius() {
+        return radius;
+    }
+
+    public void setRadius(double r) {
+        this.radius = r;
+    }
+
+    public boolean isSelected() {
+        return selected;
+    }
+
+    public void setSelected(boolean s) {
+        this.selected = s;
+    }
 }

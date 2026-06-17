@@ -1,10 +1,14 @@
 package ttrpgdash.map;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 import javafx.scene.canvas.GraphicsContext;
 import ttrpgdash.model.Entity;
 import ttrpgdash.model.GameState;
-
-import java.util.*;
 
 /**
  * Manages the collection of Token objects drawn on the map canvas.
@@ -22,18 +26,14 @@ import java.util.*;
  */
 public class TokenLayer {
 
-    // ── State ─────────────────────────────────────────────────────────────────
-
     /** All currently visible tokens, keyed by entity ID. */
     private final Map<String, Token> tokens = new LinkedHashMap<>();
 
     /** GameState reference — read for entity data, written for position persistence. */
     private final GameState gameState;
 
-    // ── Map scale (set by MapCanvas whenever the image or scale changes) ───────
-
     /** Pixel width of the map image as currently rendered on canvas. */
-    private double mapPixelWidth  = 1;
+    private double mapPixelWidth = 1;
     /** Pixel height of the map image as currently rendered on canvas. */
     private double mapPixelHeight = 1;
 
@@ -41,27 +41,17 @@ public class TokenLayer {
     private double mapOffsetX = 0;
     private double mapOffsetY = 0;
 
-    // ── Drag state ────────────────────────────────────────────────────────────
-
-    private Token     draggedToken   = null;
-    private double    dragOffsetX    = 0; // mouse offset from token centre on drag start
-    private double    dragOffsetY    = 0;
-
-    // ── Selection (for context menu) ──────────────────────────────────────────
+    private Token draggedToken = null;
+    private double dragOffsetX = 0;
+    private double dragOffsetY = 0;
 
     private Token selectedToken = null;
 
-    // ── Pending placement (entity selected in sidebar, awaiting click on map) ──
-
     private Entity pendingEntity = null;
-
-    // ── Constructor ───────────────────────────────────────────────────────────
 
     public TokenLayer(GameState gameState) {
         this.gameState = gameState;
     }
-
-    // ── Scale sync ────────────────────────────────────────────────────────────
 
     /**
      * Called by MapCanvas whenever the rendered map dimensions change
@@ -70,24 +60,22 @@ public class TokenLayer {
      */
     public void updateMapScale(double pixelWidth, double pixelHeight,
                                double offsetX, double offsetY) {
-        this.mapPixelWidth  = pixelWidth;
+        this.mapPixelWidth = pixelWidth;
         this.mapPixelHeight = pixelHeight;
-        this.mapOffsetX     = offsetX;
-        this.mapOffsetY     = offsetY;
+        this.mapOffsetX = offsetX;
+        this.mapOffsetY = offsetY;
 
         // Recompute canvas positions for all existing tokens from their stored fractions
         for (Token token : tokens.values()) {
             Entity e = token.getEntity();
             double newCx = mapOffsetX + e.getXFraction() * mapPixelWidth;
             double newCy = mapOffsetY + e.getYFraction() * mapPixelHeight;
-            double newR  = feetToPixels(e.getSizeInFeet()) / 2.0;
+            double newR = feetToPixels(e.getSizeInFeet()) / 2.0;
             token.setCx(newCx);
             token.setCy(newCy);
             token.setRadius(newR);
         }
     }
-
-    // ── Sync tokens with GameState ────────────────────────────────────────────
 
     /**
      * Rebuilds the token map from GameState.
@@ -100,13 +88,11 @@ public class TokenLayer {
             if (e.isOnMap()) {
                 double cx = mapOffsetX + e.getXFraction() * mapPixelWidth;
                 double cy = mapOffsetY + e.getYFraction() * mapPixelHeight;
-                double r  = feetToPixels(e.getSizeInFeet()) / 2.0;
+                double r = feetToPixels(e.getSizeInFeet()) / 2.0;
                 tokens.put(e.getId(), new Token(e, cx, cy, r));
             }
         }
     }
-
-    // ── Pending placement ─────────────────────────────────────────────────────
 
     /**
      * Sets an entity as "pending placement" — the next click on the map
@@ -117,11 +103,13 @@ public class TokenLayer {
         this.pendingEntity = entity;
     }
 
-    public Entity getPendingEntity() { return pendingEntity; }
+    public Entity getPendingEntity() {
+        return pendingEntity;
+    }
 
-    public boolean hasPendingEntity() { return pendingEntity != null; }
-
-    // ── Mouse events (called by MapCanvas) ───────────────────────────────────
+    public boolean hasPendingEntity() {
+        return pendingEntity != null;
+    }
 
     /**
      * Handles a map click at canvas coordinates (x, y).
@@ -167,7 +155,9 @@ public class TokenLayer {
         for (Token t : ordered) {
             if (t.contains(x, y)) {
                 // Check if another token is riding this one — if so, skip
-                if (hasRider(t)) continue;
+                if (hasRider(t)) {
+                    continue;
+                }
                 draggedToken = t;
                 dragOffsetX = x - t.getCx();
                 dragOffsetY = y - t.getCy();
@@ -181,7 +171,9 @@ public class TokenLayer {
      * Updates the dragged token position as the mouse moves.
      */
     public void handleDragMove(double x, double y) {
-        if (draggedToken == null) return;
+        if (draggedToken == null) {
+            return;
+        }
         draggedToken.setCx(x - dragOffsetX);
         draggedToken.setCy(y - dragOffsetY);
     }
@@ -195,7 +187,9 @@ public class TokenLayer {
      *   - If clear: update GameState position
      */
     public void handleDragEnd(double x, double y) {
-        if (draggedToken == null) return;
+        if (draggedToken == null) {
+            return;
+        }
 
         double finalX = x - dragOffsetX;
         double finalY = y - dragOffsetY;
@@ -231,8 +225,6 @@ public class TokenLayer {
         draggedToken = null;
     }
 
-    // ── Token placement ───────────────────────────────────────────────────────
-
     private boolean tryPlaceToken(Entity entity, double x, double y) {
         double r = feetToPixels(entity.getSizeInFeet()) / 2.0;
         Token candidate = new Token(entity, x, y, r);
@@ -255,8 +247,6 @@ public class TokenLayer {
         return true;
     }
 
-    // ── Token removal ─────────────────────────────────────────────────────────
-
     /**
      * Removes the token for the given entity from the map
      * (does NOT remove the entity from GameState/sidebar).
@@ -270,29 +260,32 @@ public class TokenLayer {
         gameState.entityChanged();
     }
 
-    // ── Selection ─────────────────────────────────────────────────────────────
-
     private void selectToken(Token t) {
         deselectAll();
         t.setSelected(true);
         selectedToken = t;
     }
 
+    /**
+     * Deselects all tokens and clears the selection state.
+     */
     public void deselectAll() {
         tokens.values().forEach(t -> t.setSelected(false));
         selectedToken = null;
     }
 
-    public Token getSelectedToken() { return selectedToken; }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    public Token getSelectedToken() {
+        return selectedToken;
+    }
 
     /**
      * Converts a size in feet to canvas pixels using the current map scale.
      * pixels = (feet / mapWidthInFeet) * mapPixelWidth
      */
     private double feetToPixels(double feet) {
-        if (gameState.getMapWidthInFeet() <= 0 || mapPixelWidth <= 0) return 30;
+        if (gameState.getMapWidthInFeet() <= 0 || mapPixelWidth <= 0) {
+            return 30;
+        }
         return (feet / gameState.getMapWidthInFeet()) * mapPixelWidth;
     }
 
@@ -300,7 +293,9 @@ public class TokenLayer {
     private List<Token> getOverlappingTokens(Token source) {
         List<Token> result = new ArrayList<>();
         for (Token t : tokens.values()) {
-            if (t != source && source.overlaps(t)) result.add(t);
+            if (t != source && source.overlaps(t)) {
+                result.add(t);
+            }
         }
         return result;
     }
@@ -319,8 +314,6 @@ public class TokenLayer {
         e.setYFraction((token.getCy() - mapOffsetY) / mapPixelHeight);
     }
 
-    // ── Rendering ─────────────────────────────────────────────────────────────
-
     /**
      * Draws all tokens onto the given GraphicsContext.
      * Z-order: mounts drawn first, then riders on top.
@@ -328,16 +321,24 @@ public class TokenLayer {
     public void draw(GraphicsContext gc) {
         // First pass: non-mounted tokens (mounts)
         for (Token t : tokens.values()) {
-            if (t.getEntity().getMountedOnId() == null) t.draw(gc);
+            if (t.getEntity().getMountedOnId() == null) {
+                t.draw(gc);
+            }
         }
         // Second pass: mounted tokens (riders on top)
         for (Token t : tokens.values()) {
-            if (t.getEntity().getMountedOnId() != null) t.draw(gc);
+            if (t.getEntity().getMountedOnId() != null) {
+                t.draw(gc);
+            }
         }
     }
 
     /** Returns the token for a given entity ID, or null. */
-    public Token getToken(String entityId) { return tokens.get(entityId); }
+    public Token getToken(String entityId) {
+        return tokens.get(entityId);
+    }
 
-    public boolean isDragging() { return draggedToken != null; }
+    public boolean isDragging() {
+        return draggedToken != null;
+    }
 }

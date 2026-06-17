@@ -34,36 +34,29 @@ import ttrpgdash.util.FileHelper;
  */
 public class SidebarPanel extends VBox {
 
-    // ── State ─────────────────────────────────────────────────────────────────
-
     private final GameState gameState;
-    private Stage           ownerStage;
-
-    // ── Callbacks ─────────────────────────────────────────────────────────────
+    private Stage ownerStage;
 
     private Consumer<Entity> onPlaceEntity;
     private Consumer<Entity> onDetailsEntity;
-    private Runnable         onEntitiesChanged;
-
-    // ── Armed card (highlighted for placement) ────────────────────────────────
+    private Runnable onEntitiesChanged;
 
     private EntityCard armedCard = null;
 
-    // ── UI sections ───────────────────────────────────────────────────────────
+    private final VBox playersList = new VBox();
+    private final VBox charactersList = new VBox();
 
-    private final VBox playersList     = new VBox();
-    private final VBox charactersList  = new VBox();
-
-    // ── Constructor ───────────────────────────────────────────────────────────
-
+    /**
+     * Creates the sidebar panel bound to the given game state.
+     */
     public SidebarPanel(GameState gameState) {
         this.gameState = gameState;
         buildUI();
     }
 
-    public void setOwnerStage(Stage stage) { this.ownerStage = stage; }
-
-    // ── UI build ──────────────────────────────────────────────────────────────
+    public void setOwnerStage(Stage stage) {
+        this.ownerStage = stage;
+    }
 
     private void buildUI() {
         setStyle("-fx-background-color: #12121e;");
@@ -72,22 +65,21 @@ public class SidebarPanel extends VBox {
         setMinWidth(200);
         setMaxWidth(300);
 
-        // ── Header ────────────────────────────────────────────────────────────
         Label header = new Label("ENTITIES");
         header.setStyle("-fx-text-fill: #888; -fx-font-size: 11px; -fx-font-weight: bold; "
                 + "-fx-padding: 12 8 6 8; -fx-letter-spacing: 1.5px;");
 
-        // ── Players section ───────────────────────────────────────────────────
         VBox playersSection = buildSection("Players", "#6fa8dc", playersList, this::addPlayer);
 
-        // ── Characters section ────────────────────────────────────────────────
-        VBox charsSection   = buildSection("Characters / NPCs", "#e06c75", charactersList, this::addCharacter);
+        VBox charsSection = buildSection("Characters / NPCs", "#e06c75", charactersList,
+                this::addCharacter);
 
         // Scroll wraps both sections
         VBox content = new VBox(playersSection, charsSection);
         ScrollPane scroll = new ScrollPane(content);
         scroll.setFitToWidth(true);
-        scroll.setStyle("-fx-background: #12121e; -fx-background-color: #12121e; -fx-border-color: transparent;");
+        scroll.setStyle(
+                "-fx-background: #12121e; -fx-background-color: #12121e; -fx-border-color: transparent;");
         VBox.setVgrow(scroll, Priority.ALWAYS);
 
         getChildren().addAll(header, scroll);
@@ -117,8 +109,10 @@ public class SidebarPanel extends VBox {
         return section;
     }
 
-    // ── Refresh (rebuilds cards from GameState) ───────────────────────────────
-
+    /**
+     * Rebuilds all entity cards from the current GameState.
+     * Call this after adding, removing, or modifying entities.
+     */
     public void refresh() {
         playersList.getChildren().clear();
         for (PlayerEntity p : gameState.getPlayers()) {
@@ -136,57 +130,70 @@ public class SidebarPanel extends VBox {
 
         card.setOnPlace(() -> {
             // Disarm previous card
-            if (armedCard != null) armedCard.setArmed(false);
+            if (armedCard != null) {
+                armedCard.setArmed(false);
+            }
             armedCard = card;
             card.setArmed(true);
-            if (onPlaceEntity != null) onPlaceEntity.accept(entity);
+            if (onPlaceEntity != null) {
+                onPlaceEntity.accept(entity);
+            }
         });
 
         card.setOnDetails(e -> {
-            if (onDetailsEntity != null) onDetailsEntity.accept(e);
+            if (onDetailsEntity != null) {
+                onDetailsEntity.accept(e);
+            }
         });
 
         card.setOnDelete(e -> {
             // Remove from GameState
-            if (e instanceof PlayerEntity)    gameState.removePlayer(e.getId());
-            if (e instanceof CharacterEntity) gameState.removeCharacter(e.getId());
+            if (e instanceof PlayerEntity) {
+                gameState.removePlayer(e.getId());
+            }
+            if (e instanceof CharacterEntity) {
+                gameState.removeCharacter(e.getId());
+            }
             refresh();
-            if (onEntitiesChanged != null) onEntitiesChanged.run();
+            if (onEntitiesChanged != null) {
+                onEntitiesChanged.run();
+            }
         });
 
         return card;
     }
 
-    // ── Add player via folder browser ─────────────────────────────────────────
-
     private void addPlayer() {
         File folder = FileHelper.browseForCharacterFolder(ownerStage);
-        if (folder == null) return;
+        if (folder == null) {
+            return;
+        }
 
         String name = folder.getName();
-        String id   = FileHelper.generateId(name);
+        String id = FileHelper.generateId(name);
 
-        PlayerEntity player = new PlayerEntity(id, name, 5.0); // default 5ft (medium)
+        PlayerEntity player = new PlayerEntity(id, name, 5.0);
         player.setAvatarPath(resolveAsset(folder, "Avatar.png"));
         player.setDetailsPath(resolveAsset(folder, "Details.png"));
 
-        // Show a quick dialog to set size
         double size = promptForSize(name, 5.0);
         player.setSizeInFeet(size);
 
         gameState.addPlayer(player);
         refresh();
-        if (onEntitiesChanged != null) onEntitiesChanged.run();
+        if (onEntitiesChanged != null) {
+            onEntitiesChanged.run();
+        }
     }
-
-    // ── Add character/NPC via folder browser ──────────────────────────────────
 
     private void addCharacter() {
         File folder = FileHelper.browseForCharacterFolder(ownerStage);
-        if (folder == null) return;
+        if (folder == null) {
+            return;
+        }
 
         String name = folder.getName();
-        String id   = FileHelper.generateId(name);
+        String id = FileHelper.generateId(name);
 
         CharacterEntity character = new CharacterEntity(id, name, 5.0);
         character.setAvatarPath(resolveAsset(folder, "Avatar.png"));
@@ -197,10 +204,10 @@ public class SidebarPanel extends VBox {
 
         gameState.addCharacter(character);
         refresh();
-        if (onEntitiesChanged != null) onEntitiesChanged.run();
+        if (onEntitiesChanged != null) {
+            onEntitiesChanged.run();
+        }
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
 
     /**
      * Checks if Avatar.png or Details.png exists in the chosen folder.
@@ -221,7 +228,13 @@ public class SidebarPanel extends VBox {
         dialog.setHeaderText("Size for: " + entityName);
         dialog.setContentText("Diameter in feet (e.g. 5 = medium, 10 = large):");
         return dialog.showAndWait()
-                .map(s -> { try { return Double.parseDouble(s); } catch (NumberFormatException e) { return defaultSize; } })
+                .map(s -> {
+                    try {
+                        return Double.parseDouble(s);
+                    } catch (NumberFormatException e) {
+                        return defaultSize;
+                    }
+                })
                 .orElse(defaultSize);
     }
 
@@ -233,9 +246,15 @@ public class SidebarPanel extends VBox {
         }
     }
 
-    // ── Callback setters ──────────────────────────────────────────────────────
+    public void setOnPlaceEntity(Consumer<Entity> handler) {
+        this.onPlaceEntity = handler;
+    }
 
-    public void setOnPlaceEntity(Consumer<Entity> handler)   { this.onPlaceEntity = handler; }
-    public void setOnDetailsEntity(Consumer<Entity> handler) { this.onDetailsEntity = handler; }
-    public void setOnEntitiesChanged(Runnable handler)       { this.onEntitiesChanged = handler; }
+    public void setOnDetailsEntity(Consumer<Entity> handler) {
+        this.onDetailsEntity = handler;
+    }
+
+    public void setOnEntitiesChanged(Runnable handler) {
+        this.onEntitiesChanged = handler;
+    }
 }

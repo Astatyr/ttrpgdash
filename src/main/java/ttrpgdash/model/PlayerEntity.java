@@ -8,24 +8,23 @@ package ttrpgdash.model;
  */
 public class PlayerEntity extends Entity {
 
-    // ── PC-specific fields (expand as needed) ─────────────────────────────────
-
     /** Player's real name (optional, for DM reference). */
     private String playerName;
-
-    // ── Constructor ───────────────────────────────────────────────────────────
 
     public PlayerEntity(String id, String name, double sizeInFeet) {
         super(id, name, sizeInFeet);
     }
 
-    // ── Getters & setters ─────────────────────────────────────────────────────
+    public String getPlayerName() {
+        return playerName;
+    }
 
-    public String getPlayerName()              { return playerName; }
-    public void   setPlayerName(String name)   { this.playerName = name; }
-
-    // ── Type tag ──────────────────────────────────────────────────────────────
+    public void setPlayerName(String name) {
+        this.playerName = name;
+    }
 
     @Override
-    public String getEntityType() { return "player"; }
+    public String getEntityType() {
+        return "player";
+    }
 }

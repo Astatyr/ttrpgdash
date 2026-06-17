@@ -10,8 +10,6 @@ package ttrpgdash.model;
  */
 public class CharacterEntity extends Entity {
 
-    // ── NPC-specific fields (expand as needed) ────────────────────────────────
-
     /**
      * Optional label for grouping (e.g. "Goblin", "Dragon", "Merchant").
      * Used for display in the sidebar — not mechanically enforced.
@@ -24,23 +22,33 @@ public class CharacterEntity extends Entity {
      */
     private boolean hostile;
 
-    // ── Constructor ───────────────────────────────────────────────────────────
-
+    /**
+     * Creates a new character entity with the given ID, name, and size.
+     * Defaults to hostile since most non-player entities are adversaries.
+     */
     public CharacterEntity(String id, String name, double sizeInFeet) {
         super(id, name, sizeInFeet);
-        this.hostile = true; // default assumption for non-player entities
+        this.hostile = true;
     }
 
-    // ── Getters & setters ─────────────────────────────────────────────────────
+    public String getCreatureType() {
+        return creatureType;
+    }
 
-    public String getCreatureType()                  { return creatureType; }
-    public void   setCreatureType(String type)       { this.creatureType = type; }
+    public void setCreatureType(String type) {
+        this.creatureType = type;
+    }
 
-    public boolean isHostile()                       { return hostile; }
-    public void    setHostile(boolean hostile)       { this.hostile = hostile; }
+    public boolean isHostile() {
+        return hostile;
+    }
 
-    // ── Type tag ──────────────────────────────────────────────────────────────
+    public void setHostile(boolean hostile) {
+        this.hostile = hostile;
+    }
 
     @Override
-    public String getEntityType() { return "character"; }
+    public String getEntityType() {
+        return "character";
+    }
 }

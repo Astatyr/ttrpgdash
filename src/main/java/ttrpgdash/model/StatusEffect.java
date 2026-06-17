@@ -3,6 +3,9 @@ package ttrpgdash.model;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Constants and validation for status effects that can be applied to entities.
+ */
 public final class StatusEffect {
 
     public static final List<String> ALL = List.of(
@@ -17,8 +20,7 @@ public final class StatusEffect {
             "exhausted"
     );
 
-    private static final Set<String> VALID =
-            Set.copyOf(ALL);
+    private static final Set<String> VALID = Set.copyOf(ALL);
 
     private StatusEffect() {}
 

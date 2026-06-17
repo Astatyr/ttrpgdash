@@ -31,51 +31,41 @@ import ttrpgdash.util.FileHelper;
  */
 public class MapCanvas extends Pane {
 
-    // ── Canvas ────────────────────────────────────────────────────────────────
+    private static final double SCALE_MIN = 0.1;
+    private static final double SCALE_MAX = 10.0;
+    private static final double SCALE_STEP = 0.1;
 
     private final Canvas canvas;
     private final GraphicsContext gc;
 
-    // ── Map image ─────────────────────────────────────────────────────────────
-
-    private Image mapImage = null;
-
-    // ── Transform state ───────────────────────────────────────────────────────
+    private Image mapImage;
 
     /** Current zoom level. 1.0 = image fits the pane. */
     private double scale = 1.0;
-    private static final double SCALE_MIN  = 0.1;
-    private static final double SCALE_MAX  = 10.0;
-    private static final double SCALE_STEP = 0.1;
 
     /** Canvas translation: where the top-left of the map image sits on the canvas. */
     private double offsetX = 0;
     private double offsetY = 0;
 
-    // ── Pan drag state ────────────────────────────────────────────────────────
-
-    private double panStartX, panStartY;
-    private double panOriginX, panOriginY;
+    private double panStartX;
+    private double panStartY;
+    private double panOriginX;
+    private double panOriginY;
     private boolean panning = false;
 
-    // ── Token layer ───────────────────────────────────────────────────────────
-
     private final TokenLayer tokenLayer;
-
-    // ── Callbacks (set by MainWindow) ─────────────────────────────────────────
 
     /** Called when a token is right-clicked — passes the selected token for context menu. */
     private Consumer<Token> onTokenRightClick;
 
-    // ── GameState ─────────────────────────────────────────────────────────────
-
     private final GameState gameState;
 
-    // ── Constructor ───────────────────────────────────────────────────────────
-
+    /**
+     * Creates the map canvas bound to the given game state.
+     */
     public MapCanvas(GameState gameState) {
-        this.gameState   = gameState;
-        this.tokenLayer  = new TokenLayer(gameState);
+        this.gameState = gameState;
+        this.tokenLayer = new TokenLayer(gameState);
 
         // Canvas fills the pane
         canvas = new Canvas();
@@ -84,15 +74,13 @@ public class MapCanvas extends Pane {
         // Bind canvas size to pane size
         canvas.widthProperty().bind(widthProperty());
         canvas.heightProperty().bind(heightProperty());
-        canvas.widthProperty().addListener(e  -> redraw());
+        canvas.widthProperty().addListener(e -> redraw());
         canvas.heightProperty().addListener(e -> redraw());
 
         gc = canvas.getGraphicsContext2D();
 
         setupMouseHandlers();
     }
-
-    // ── Map loading ───────────────────────────────────────────────────────────
 
     /**
      * Loads a new map image from the given path and resets zoom/pan to fit.
@@ -110,25 +98,27 @@ public class MapCanvas extends Pane {
      */
     public void reloadFromState() {
         String path = gameState.getMapImagePath();
-        if (path != null) loadMap(path);
+        if (path != null) {
+            loadMap(path);
+        }
         tokenLayer.syncFromGameState();
         redraw();
     }
 
     /** Scales and centres the map image to fit the current pane size. */
     private void fitMapToPane() {
-        if (mapImage == null) return;
-        double paneW = getWidth()  > 0 ? getWidth()  : 800;
+        if (mapImage == null) {
+            return;
+        }
+        double paneW = getWidth() > 0 ? getWidth() : 800;
         double paneH = getHeight() > 0 ? getHeight() : 600;
         double scaleX = paneW / mapImage.getWidth();
         double scaleY = paneH / mapImage.getHeight();
         scale = Math.min(scaleX, scaleY);
-        offsetX = (paneW - mapImage.getWidth()  * scale) / 2.0;
+        offsetX = (paneW - mapImage.getWidth() * scale) / 2.0;
         offsetY = (paneH - mapImage.getHeight() * scale) / 2.0;
         notifyTokenLayerOfScale();
     }
-
-    // ── Pending token placement ───────────────────────────────────────────────
 
     /**
      * Arms the canvas to place the given entity on the next left-click.
@@ -138,13 +128,12 @@ public class MapCanvas extends Pane {
         tokenLayer.setPendingEntity(entity);
     }
 
-    // ── Mouse handlers ────────────────────────────────────────────────────────
-
     private void setupMouseHandlers() {
 
-        // ── Left click ────────────────────────────────────────────────────────
         canvas.setOnMouseClicked(e -> {
-            if (e.getButton() != MouseButton.PRIMARY) return;
+            if (e.getButton() != MouseButton.PRIMARY) {
+                return;
+            }
             boolean handled = tokenLayer.handleClick(e.getX(), e.getY());
             if (!handled && !tokenLayer.hasPendingEntity()) {
                 tokenLayer.deselectAll();
@@ -152,13 +141,12 @@ public class MapCanvas extends Pane {
             redraw();
         });
 
-        // ── Right click ───────────────────────────────────────────────────────
         canvas.setOnMousePressed(e -> {
             if (e.getButton() == MouseButton.SECONDARY) {
                 // Pan start
-                panning    = true;
-                panStartX  = e.getX();
-                panStartY  = e.getY();
+                panning = true;
+                panStartX = e.getX();
+                panStartY = e.getY();
                 panOriginX = offsetX;
                 panOriginY = offsetY;
             } else if (e.getButton() == MouseButton.PRIMARY) {
@@ -180,6 +168,7 @@ public class MapCanvas extends Pane {
         });
 
         canvas.setOnMouseReleased(e -> {
+            boolean wasPanning = panning;
             if (panning) {
                 panning = false;
             } else if (tokenLayer.isDragging()) {
@@ -187,7 +176,7 @@ public class MapCanvas extends Pane {
                 redraw();
             }
             // Right-click on a selected token → context menu
-            if (e.getButton() == MouseButton.SECONDARY && !panning) {
+            if (e.getButton() == MouseButton.SECONDARY && !wasPanning) {
                 Token sel = tokenLayer.getSelectedToken();
                 if (sel != null && onTokenRightClick != null) {
                     onTokenRightClick.accept(sel);
@@ -195,37 +184,34 @@ public class MapCanvas extends Pane {
             }
         });
 
-        // ── Scroll to zoom ────────────────────────────────────────────────────
         canvas.setOnScroll(this::handleScroll);
     }
 
     private void handleScroll(ScrollEvent e) {
-        double delta     = e.getDeltaY() > 0 ? SCALE_STEP : -SCALE_STEP;
-        double newScale  = Math.clamp(scale + delta, SCALE_MIN, SCALE_MAX);
-        double mouseX    = e.getX();
-        double mouseY    = e.getY();
+        double delta = e.getDeltaY() > 0 ? SCALE_STEP : -SCALE_STEP;
+        double newScale = Math.max(SCALE_MIN, Math.min(SCALE_MAX, scale + delta));
+        double mouseX = e.getX();
+        double mouseY = e.getY();
 
         // Zoom toward the mouse cursor
         double scaleRatio = newScale / scale;
         offsetX = mouseX - (mouseX - offsetX) * scaleRatio;
         offsetY = mouseY - (mouseY - offsetY) * scaleRatio;
-        scale   = newScale;
+        scale = newScale;
 
         notifyTokenLayerOfScale();
         redraw();
     }
 
-    // ── Scale notification ────────────────────────────────────────────────────
-
     /** Tells the TokenLayer the current rendered map size and position. */
     private void notifyTokenLayerOfScale() {
-        if (mapImage == null) return;
-        double imgW = mapImage.getWidth()  * scale;
+        if (mapImage == null) {
+            return;
+        }
+        double imgW = mapImage.getWidth() * scale;
         double imgH = mapImage.getHeight() * scale;
         tokenLayer.updateMapScale(imgW, imgH, offsetX, offsetY);
     }
-
-    // ── Drawing ───────────────────────────────────────────────────────────────
 
     private void redraw() {
         double w = canvas.getWidth();
@@ -238,7 +224,7 @@ public class MapCanvas extends Pane {
         gc.fillRect(0, 0, w, h);
 
         if (mapImage != null && !mapImage.isError()) {
-            double imgW = mapImage.getWidth()  * scale;
+            double imgW = mapImage.getWidth() * scale;
             double imgH = mapImage.getHeight() * scale;
             gc.drawImage(mapImage, offsetX, offsetY, imgW, imgH);
         } else {
@@ -260,8 +246,6 @@ public class MapCanvas extends Pane {
         }
     }
 
-    // ── Map width config ──────────────────────────────────────────────────────
-
     /**
      * Called when the DM changes the map width in feet.
      * Triggers a token radius recalculation.
@@ -271,8 +255,9 @@ public class MapCanvas extends Pane {
         redraw();
     }
 
-    // ── Token removal (from context menu) ────────────────────────────────────
-
+    /**
+     * Removes the currently selected token from the map.
+     */
     public void removeSelectedToken() {
         Token sel = tokenLayer.getSelectedToken();
         if (sel != null) {
@@ -281,21 +266,17 @@ public class MapCanvas extends Pane {
         }
     }
 
-    // ── Sync after sidebar changes ────────────────────────────────────────────
-
     /** Call this after adding or removing entities from the sidebar. */
     public void syncTokens() {
         tokenLayer.syncFromGameState();
         redraw();
     }
 
-    // ── Callbacks ─────────────────────────────────────────────────────────────
-
     public void setOnTokenRightClick(Consumer<Token> handler) {
         this.onTokenRightClick = handler;
     }
 
-    // ── Getters ───────────────────────────────────────────────────────────────
-
-    public TokenLayer getTokenLayer() { return tokenLayer; }
+    public TokenLayer getTokenLayer() {
+        return tokenLayer;
+    }
 }

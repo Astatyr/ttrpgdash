@@ -10,8 +10,6 @@ import java.util.List;
  */
 public abstract class Entity {
 
-    // ── Identity ──────────────────────────────────────────────────────────────
-
     /** Unique ID, generated once on creation (used as folder name key). */
     private String id;
 
@@ -19,18 +17,16 @@ public abstract class Entity {
     private String name;
 
     /**
-     * Path to the Avatar.png inside assets/characters/<name>/.
+     * Path to the Avatar.png inside the entity's character folder.
      * Null means use the default white circle.
      */
     private String avatarPath;
 
     /**
-     * Path to the Details.png inside assets/characters/<name>/.
+     * Path to the Details.png inside the entity's character folder.
      * Null means no details image available.
      */
     private String detailsPath;
-
-    // ── Size ──────────────────────────────────────────────────────────────────
 
     /**
      * Token diameter in D&D feet (e.g. 5 = medium, 10 = large, 15 = huge).
@@ -38,11 +34,9 @@ public abstract class Entity {
      */
     private double sizeInFeet;
 
-    // ── Position on map ───────────────────────────────────────────────────────
-
     /**
      * Centre position of the token in map-image pixel coordinates.
-     * Stored as a fraction (0.0–1.0) of the map image dimensions so positions
+     * Stored as a fraction (0.0-1.0) of the map image dimensions so positions
      * survive zoom changes and window resizes.
      */
     private double xFraction;
@@ -51,15 +45,11 @@ public abstract class Entity {
     /** Whether this entity is currently placed on the map. */
     private boolean onMap;
 
-    // ── Riding / mounting ─────────────────────────────────────────────────────
-
     /**
      * ID of the entity this one is mounted on, or null if not riding.
      * Mounted entities share the same map position as their mount.
      */
     private String mountedOnId;
-
-    // ── Status effects ────────────────────────────────────────────────────────
 
     /**
      * List of active status effect keys (e.g. "poisoned", "stunned").
@@ -67,8 +57,9 @@ public abstract class Entity {
      */
     private List<String> statusEffects;
 
-    // ── Constructor ───────────────────────────────────────────────────────────
-
+    /**
+     * Creates a new entity with the given ID, name, and size.
+     */
     public Entity(String id, String name, double sizeInFeet) {
         this.id = id;
         this.name = name;
@@ -82,40 +73,93 @@ public abstract class Entity {
         this.statusEffects = new ArrayList<>();
     }
 
-    // ── Getters & setters ─────────────────────────────────────────────────────
+    public String getId() {
+        return id;
+    }
 
-    public String getId()                          { return id; }
-    public void   setId(String id)                 { this.id = id; }
+    public void setId(String id) {
+        this.id = id;
+    }
 
-    public String getName()                        { return name; }
-    public void   setName(String name)             { this.name = name; }
+    public String getName() {
+        return name;
+    }
 
-    public String getAvatarPath()                  { return avatarPath; }
-    public void   setAvatarPath(String avatarPath) { this.avatarPath = avatarPath; }
+    public void setName(String name) {
+        this.name = name;
+    }
 
-    public String getDetailsPath()                 { return detailsPath; }
-    public void   setDetailsPath(String path)      { this.detailsPath = path; }
+    public String getAvatarPath() {
+        return avatarPath;
+    }
 
-    public double getSizeInFeet()                  { return sizeInFeet; }
-    public void   setSizeInFeet(double sizeInFeet) { this.sizeInFeet = sizeInFeet; }
+    public void setAvatarPath(String avatarPath) {
+        this.avatarPath = avatarPath;
+    }
 
-    public double getXFraction()                   { return xFraction; }
-    public void   setXFraction(double x)           { this.xFraction = x; }
+    public String getDetailsPath() {
+        return detailsPath;
+    }
 
-    public double getYFraction()                   { return yFraction; }
-    public void   setYFraction(double y)           { this.yFraction = y; }
+    public void setDetailsPath(String path) {
+        this.detailsPath = path;
+    }
 
-    public boolean isOnMap()                       { return onMap; }
-    public void    setOnMap(boolean onMap)         { this.onMap = onMap; }
+    public double getSizeInFeet() {
+        return sizeInFeet;
+    }
 
-    public String getMountedOnId()                 { return mountedOnId; }
-    public void   setMountedOnId(String id)        { this.mountedOnId = id; }
+    public void setSizeInFeet(double sizeInFeet) {
+        this.sizeInFeet = sizeInFeet;
+    }
 
-    public List<String> getStatusEffects()         { return statusEffects; }
-    public void setStatusEffects(List<String> fx)  { this.statusEffects = fx; }
+    public double getXFraction() {
+        return xFraction;
+    }
 
+    public void setXFraction(double x) {
+        this.xFraction = x;
+    }
+
+    public double getYFraction() {
+        return yFraction;
+    }
+
+    public void setYFraction(double y) {
+        this.yFraction = y;
+    }
+
+    public boolean isOnMap() {
+        return onMap;
+    }
+
+    public void setOnMap(boolean onMap) {
+        this.onMap = onMap;
+    }
+
+    public String getMountedOnId() {
+        return mountedOnId;
+    }
+
+    public void setMountedOnId(String id) {
+        this.mountedOnId = id;
+    }
+
+    public List<String> getStatusEffects() {
+        return statusEffects;
+    }
+
+    public void setStatusEffects(List<String> fx) {
+        this.statusEffects = fx;
+    }
+
+    /**
+     * Adds a status effect if it is valid and not already present.
+     */
     public void addStatusEffect(String effect) {
-        if (!StatusEffect.isValid(effect)) return;
+        if (!StatusEffect.isValid(effect)) {
+            return;
+        }
 
         if (!statusEffects.contains(effect)) {
             statusEffects.add(effect);
@@ -125,8 +169,6 @@ public abstract class Entity {
     public void removeStatusEffect(String effect) {
         statusEffects.remove(effect);
     }
-
-    // ── Abstract ──────────────────────────────────────────────────────────────
 
     /** Returns "player" or "character" — used for serialisation type tagging. */
     public abstract String getEntityType();
