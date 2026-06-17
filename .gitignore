@@ -11,6 +11,8 @@
 *.iws
 
 # Build
+.gradle/
+build/
 out/
 dist/
 target/
