@@ -44,6 +44,8 @@ public class TokenLayer {
     private Token draggedToken = null;
     private double dragOffsetX = 0;
     private double dragOffsetY = 0;
+    private double dragOriginalXFraction = 0;
+    private double dragOriginalYFraction = 0;
 
     private Token selectedToken = null;
 
@@ -161,6 +163,8 @@ public class TokenLayer {
                 draggedToken = t;
                 dragOffsetX = x - t.getCx();
                 dragOffsetY = y - t.getCy();
+                dragOriginalXFraction = t.getEntity().getXFraction();
+                dragOriginalYFraction = t.getEntity().getYFraction();
                 return true;
             }
         }
@@ -176,6 +180,9 @@ public class TokenLayer {
         }
         draggedToken.setCx(x - dragOffsetX);
         draggedToken.setCy(y - dragOffsetY);
+        // Update entity fractions in memory so the player view can read the live position.
+        // Does not call gameState.entityChanged() — no disk write until drop.
+        persistTokenPosition(draggedToken);
     }
 
     /**
@@ -215,10 +222,11 @@ public class TokenLayer {
             persistTokenPosition(draggedToken);
 
         } else {
-            // Multiple overlaps — snap back to stored fraction position
-            Entity e = draggedToken.getEntity();
-            draggedToken.setCx(mapOffsetX + e.getXFraction() * mapPixelWidth);
-            draggedToken.setCy(mapOffsetY + e.getYFraction() * mapPixelHeight);
+            // Multiple overlaps — restore original position
+            draggedToken.getEntity().setXFraction(dragOriginalXFraction);
+            draggedToken.getEntity().setYFraction(dragOriginalYFraction);
+            draggedToken.setCx(mapOffsetX + dragOriginalXFraction * mapPixelWidth);
+            draggedToken.setCy(mapOffsetY + dragOriginalYFraction * mapPixelHeight);
         }
 
         gameState.entityChanged();

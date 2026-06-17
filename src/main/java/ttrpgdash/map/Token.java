@@ -1,5 +1,6 @@
 package ttrpgdash.map;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -7,6 +8,7 @@ import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
+import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
 import ttrpgdash.model.Entity;
 import ttrpgdash.model.StatusEffect;
@@ -28,6 +30,11 @@ public final class Token {
 
     private static final Map<String, Image> STATUS_ICONS = new HashMap<>();
 
+    private static Image nameboxImage;
+    private static boolean nameboxLoaded = false;
+    private static Font cinzelFont;
+    private static boolean cinzelLoaded = false;
+
     private final Entity entity;
 
     private double cx;
@@ -39,6 +46,10 @@ public final class Token {
     private Image avatarImage;
 
     private boolean selected;
+
+    /** Cached to avoid re-measuring text on every frame; invalidated when radius changes. */
+    private double cachedNameFontRadius = -1;
+    private double cachedNameFontSize = 10;
 
     /**
      * Creates a token for the given entity at the specified canvas position and radius.
@@ -66,13 +77,11 @@ public final class Token {
         double y = cy - radius;
         double diameter = radius * 2;
 
-        // Clip to circle
         gc.save();
         gc.beginPath();
         gc.arc(cx, cy, radius, radius, 0, 360);
         gc.clip();
 
-        // Avatar image or white fill
         if (avatarImage != null && !avatarImage.isError()) {
             gc.drawImage(avatarImage, x, y, diameter, diameter);
         } else {
@@ -82,7 +91,6 @@ public final class Token {
 
         gc.restore();
 
-        // Circle border — colour indicates type and selection
         if (selected) {
             gc.setStroke(Color.YELLOW);
             gc.setLineWidth(3);
@@ -95,21 +103,53 @@ public final class Token {
         }
         gc.strokeOval(x, y, diameter, diameter);
 
-        // Name label below the token
-        gc.setFill(Color.WHITE);
-        gc.setFont(Font.font("Arial", Math.max(10, radius * 0.5)));
-        gc.setTextAlign(TextAlignment.CENTER);
-        gc.fillText(entity.getName(), cx, cy + radius + 14);
-
-        // Status effect icons above the token (up to 4 shown)
+        drawNameBox(gc);
         drawStatusIcons(gc);
 
-        // Mounted indicator — small "M" badge if this entity is riding someone
         if (entity.getMountedOnId() != null) {
             gc.setFill(Color.GOLD);
             gc.setFont(Font.font("Arial", 10));
+            gc.setTextAlign(TextAlignment.LEFT);
             gc.fillText("M", cx + radius - 4, cy - radius + 12);
         }
+    }
+
+    private void drawNameBox(GraphicsContext gc) {
+        double boxW = Math.max(60, radius * 2.25);
+        double boxH = Math.max(24, radius * 0.75);
+        double boxX = cx - boxW / 2.0;
+        double boxY = cy + radius * 0.6;
+
+        Image box = getNameboxImage();
+        if (box != null && !box.isError()) {
+            gc.drawImage(box, boxX, boxY, boxW, boxH);
+        }
+
+        double fontSize = getNameFontSize(boxW, boxH);
+        gc.setFont(loadCinzel(fontSize));
+        gc.setFill(Color.BLACK);
+        gc.setTextAlign(TextAlignment.CENTER);
+        gc.fillText(entity.getName(), cx, boxY + boxH * 0.65, boxW * 0.8);
+    }
+
+    /** Returns the fitting font size for the name, recomputed only when radius changes. */
+    private double getNameFontSize(double boxW, double boxH) {
+        if (radius == cachedNameFontRadius) {
+            return cachedNameFontSize;
+        }
+        cachedNameFontRadius = radius;
+        double textAreaW = boxW * 0.8;
+        double fontSize = Math.max(7, boxH * 0.45);
+        while (fontSize > 7) {
+            Text measurer = new Text(entity.getName());
+            measurer.setFont(loadCinzel(fontSize));
+            if (measurer.getBoundsInLocal().getWidth() <= textAreaW) {
+                break;
+            }
+            fontSize -= 0.5;
+        }
+        cachedNameFontSize = fontSize;
+        return fontSize;
     }
 
     /** Draws status effect icons in a row above the token, up to 4 with a +N badge if more. */
@@ -149,6 +189,35 @@ public final class Token {
             gc.setFont(Font.font("Arial", Math.max(9, iconSize * 0.65)));
             gc.fillText("+" + overflow, badgeX, iconY + iconSize * 0.85);
         }
+    }
+
+    private static Image getNameboxImage() {
+        if (!nameboxLoaded) {
+            nameboxLoaded = true;
+            String path = "assets/namebox.png";
+            if (FileHelper.fileExists(path)) {
+                nameboxImage = FileHelper.loadImage(path);
+            }
+        }
+        return nameboxImage;
+    }
+
+    private static Font loadCinzel(double size) {
+        if (!cinzelLoaded) {
+            cinzelLoaded = true;
+            String fontPath = "assets/fonts/Cinzel-Regular.ttf";
+            if (FileHelper.fileExists(fontPath)) {
+                Font loaded = Font.loadFont(
+                        new File(fontPath).toURI().toString(), size);
+                if (loaded != null) {
+                    cinzelFont = loaded;
+                }
+            }
+        }
+        if (cinzelFont != null) {
+            return Font.font(cinzelFont.getFamily(), size);
+        }
+        return Font.font("Georgia", size);
     }
 
     /**

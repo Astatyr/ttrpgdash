@@ -7,12 +7,79 @@
       "name": "Birdie",
       "avatarPath": "D:\\Astatyr_Hub\\ttrpgdash\\assets\\characters\\Birdie\\Avatar.png",
       "sizeInFeet": 5.0,
-      "xFraction": 0.09493161705551084,
-      "yFraction": 0.3583044472916645,
+      "xFraction": 0.5297184556668059,
+      "yFraction": 0.4096272459104315,
       "onMap": true,
+      "statusEffects": [
+        "poisoned",
+        "stunned",
+        "burning",
+        "frozen",
+        "bleeding",
+        "cursed",
+        "invisible"
+      ],
+      "entityType": "player"
+    },
+    {
+      "id": "birdie_19ed65580fb",
+      "name": "Birdie",
+      "avatarPath": "D:\\Astatyr_Hub\\ttrpgdash\\assets\\characters\\Birdie\\Avatar.png",
+      "sizeInFeet": 15.0,
+      "xFraction": 0.7872291852805398,
+      "yFraction": 0.22056163397180795,
+      "onMap": true,
+      "statusEffects": [],
+      "entityType": "player"
+    },
+    {
+      "id": "birdie_19ed65a4685",
+      "name": "Birdie",
+      "avatarPath": "D:\\Astatyr_Hub\\ttrpgdash\\assets\\characters\\Birdie\\Avatar.png",
+      "sizeInFeet": 5.0,
+      "xFraction": 0.0,
+      "yFraction": 0.0,
+      "onMap": false,
       "statusEffects": [],
       "entityType": "player"
     }
   ],
-  "characters": []
+  "characters": [
+    {
+      "hostile": true,
+      "id": "birdie_19ed663d5e3",
+      "name": "Birdie",
+      "avatarPath": "D:\\Astatyr_Hub\\ttrpgdash\\assets\\characters\\Birdie\\Avatar.png",
+      "sizeInFeet": 5.0,
+      "xFraction": 0.5347416880148625,
+      "yFraction": 0.28360688360819897,
+      "onMap": true,
+      "statusEffects": [],
+      "entityType": "character"
+    },
+    {
+      "hostile": true,
+      "id": "birdie2_19ed67f067c",
+      "name": "Birdie 2",
+      "avatarPath": "D:\\Astatyr_Hub\\ttrpgdash\\assets\\characters\\Birdie\\Avatar.png",
+      "sizeInFeet": 5.0,
+      "xFraction": 0.6097582970568021,
+      "yFraction": 0.4072682212985517,
+      "onMap": true,
+      "statusEffects": [],
+      "entityType": "character"
+    },
+    {
+      "hostile": true,
+      "id": "ansajcfmwjoraegyuhreiwmedsufhgdndjmswnfg_19ed6a3f3ad",
+      "name": "an sajcfmwjoraegyuhreiwmedsufhgdndjmswnfg",
+      "avatarPath": "D:\\Astatyr_Hub\\ttrpgdash\\assets\\characters\\an sajcfmwjoraegyuhreiwmedsufhgdndjmswnfg\\Avatar.png",
+      "sizeInFeet": 5.0,
+      "xFraction": 0.49820239509525294,
+      "yFraction": 0.15847309721405176,
+      "onMap": true,
+      "statusEffects": [],
+      "entityType": "character"
+    }
+  ]
 }

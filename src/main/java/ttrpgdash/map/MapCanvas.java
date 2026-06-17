@@ -59,15 +59,34 @@ public class MapCanvas extends Pane {
     /** Called when a token is right-clicked — passes token and screen coordinates. */
     private BiConsumer<Token, Point2D> onTokenRightClick;
 
+    /** Called when a token is placed on or moved on the map. */
+    private Runnable onTokensChanged;
+
     private boolean panMoved = false;
 
     private final GameState gameState;
 
+    /** When true, token interaction (drag, placement, context menu) is disabled. */
+    private final boolean readOnly;
+
+    private Image playerMapBg;
+    private boolean playerMapBgLoaded = false;
+
     /**
-     * Creates the map canvas bound to the given game state.
+     * Creates an editable map canvas bound to the given game state.
      */
     public MapCanvas(GameState gameState) {
+        this(gameState, false);
+    }
+
+    /**
+     * Creates the map canvas bound to the given game state.
+     * Pass {@code readOnly = true} for a display-only view that allows pan/zoom
+     * but disables token drag, placement, and the context menu.
+     */
+    public MapCanvas(GameState gameState, boolean readOnly) {
         this.gameState = gameState;
+        this.readOnly = readOnly;
         this.tokenLayer = new TokenLayer(gameState);
 
         // Canvas fills the pane
@@ -135,16 +154,21 @@ public class MapCanvas extends Pane {
 
     private void setupMouseHandlers() {
 
-        canvas.setOnMouseClicked(e -> {
-            if (e.getButton() != MouseButton.PRIMARY) {
-                return;
-            }
-            boolean handled = tokenLayer.handleClick(e.getX(), e.getY());
-            if (!handled && !tokenLayer.hasPendingEntity()) {
-                tokenLayer.deselectAll();
-            }
-            redraw();
-        });
+        if (!readOnly) {
+            canvas.setOnMouseClicked(e -> {
+                if (e.getButton() != MouseButton.PRIMARY) {
+                    return;
+                }
+                boolean handled = tokenLayer.handleClick(e.getX(), e.getY());
+                if (handled && onTokensChanged != null) {
+                    onTokensChanged.run();
+                }
+                if (!handled && !tokenLayer.hasPendingEntity()) {
+                    tokenLayer.deselectAll();
+                }
+                redraw();
+            });
+        }
 
         canvas.setOnMousePressed(e -> {
             if (e.getButton() == MouseButton.SECONDARY) {
@@ -154,7 +178,7 @@ public class MapCanvas extends Pane {
                 panStartY = e.getY();
                 panOriginX = offsetX;
                 panOriginY = offsetY;
-            } else if (e.getButton() == MouseButton.PRIMARY) {
+            } else if (e.getButton() == MouseButton.PRIMARY && !readOnly) {
                 tokenLayer.handleDragStart(e.getX(), e.getY());
             }
         });
@@ -166,8 +190,11 @@ public class MapCanvas extends Pane {
                 offsetY = panOriginY + (e.getY() - panStartY);
                 notifyTokenLayerOfScale();
                 redraw();
-            } else if (tokenLayer.isDragging()) {
+            } else if (!readOnly && tokenLayer.isDragging()) {
                 tokenLayer.handleDragMove(e.getX(), e.getY());
+                if (onTokensChanged != null) {
+                    onTokensChanged.run();
+                }
                 redraw();
             }
         });
@@ -175,11 +202,14 @@ public class MapCanvas extends Pane {
         canvas.setOnMouseReleased(e -> {
             if (panning) {
                 panning = false;
-            } else if (tokenLayer.isDragging()) {
+            } else if (!readOnly && tokenLayer.isDragging()) {
                 tokenLayer.handleDragEnd(e.getX(), e.getY());
+                if (onTokensChanged != null) {
+                    onTokensChanged.run();
+                }
                 redraw();
             }
-            if (e.getButton() == MouseButton.SECONDARY && !panMoved) {
+            if (!readOnly && e.getButton() == MouseButton.SECONDARY && !panMoved) {
                 Token hit = tokenLayer.hitTest(e.getX(), e.getY());
                 if (hit != null && onTokenRightClick != null) {
                     onTokenRightClick.accept(hit, new Point2D(e.getScreenX(), e.getScreenY()));
@@ -206,6 +236,17 @@ public class MapCanvas extends Pane {
         redraw();
     }
 
+    private Image getPlayerMapBg() {
+        if (!playerMapBgLoaded) {
+            playerMapBgLoaded = true;
+            String path = "assets/playermapbg.png";
+            if (FileHelper.fileExists(path)) {
+                playerMapBg = FileHelper.loadImage(path);
+            }
+        }
+        return playerMapBg;
+    }
+
     /** Tells the TokenLayer the current rendered map size and position. */
     private void notifyTokenLayerOfScale() {
         if (mapImage == null) {
@@ -223,8 +264,18 @@ public class MapCanvas extends Pane {
         gc.clearRect(0, 0, w, h);
 
         // Background
-        gc.setFill(Color.rgb(20, 20, 30));
-        gc.fillRect(0, 0, w, h);
+        if (readOnly) {
+            Image bg = getPlayerMapBg();
+            if (bg != null && !bg.isError()) {
+                gc.drawImage(bg, 0, 0, w, h);
+            } else {
+                gc.setFill(Color.rgb(20, 20, 30));
+                gc.fillRect(0, 0, w, h);
+            }
+        } else {
+            gc.setFill(Color.rgb(20, 20, 30));
+            gc.fillRect(0, 0, w, h);
+        }
 
         if (mapImage != null && !mapImage.isError()) {
             double imgW = mapImage.getWidth() * scale;
@@ -282,6 +333,10 @@ public class MapCanvas extends Pane {
 
     public void setOnTokenRightClick(BiConsumer<Token, Point2D> handler) {
         this.onTokenRightClick = handler;
+    }
+
+    public void setOnTokensChanged(Runnable handler) {
+        this.onTokensChanged = handler;
     }
 
     public TokenLayer getTokenLayer() {

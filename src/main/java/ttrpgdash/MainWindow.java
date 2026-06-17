@@ -53,6 +53,8 @@ public class MainWindow {
 
     private final Label statusLabel = new Label("Ready");
 
+    private PlayerView playerView;
+
     /**
      * Initialises the window components for the given game state.
      * Call {@link #show(Stage)} afterwards to display the window.
@@ -82,11 +84,13 @@ public class MainWindow {
 
         sidebarPanel.setOnEntitiesChanged(() -> {
             mapCanvas.syncTokens();
+            refreshPlayerView();
             setStatus("Entities updated.");
         });
 
         mapCanvas.setOnTokenRightClick((token, point) ->
                 showTokenContextMenu(token, point.getX(), point.getY()));
+        mapCanvas.setOnTokensChanged(this::refreshPlayerView);
 
         SplitPane splitPane = new SplitPane();
         splitPane.setOrientation(Orientation.HORIZONTAL);
@@ -141,12 +145,16 @@ public class MainWindow {
         setWidth.setOnAction(e -> promptMapWidth());
 
         MenuItem fitMap = new MenuItem("Fit Map to Window");
-        fitMap.setOnAction(e -> mapCanvas.reloadFromState());
+        fitMap.setOnAction(e -> {
+            mapCanvas.reloadFromState();
+            refreshPlayerView();
+        });
 
         MenuItem clearMap = new MenuItem("Clear Map…");
         clearMap.setOnAction(e -> {
             gameState.clearMapOnly();
             mapCanvas.reloadFromState();
+            refreshPlayerView();
             setStatus("Map cleared.");
         });
 
@@ -159,6 +167,7 @@ public class MainWindow {
         clearPositions.setOnAction(e -> {
             gameState.clearMapPositions();
             mapCanvas.syncTokens();
+            refreshPlayerView();
             setStatus("Token positions cleared.");
         });
 
@@ -173,6 +182,7 @@ public class MainWindow {
                     gameState.clearAll();
                     mapCanvas.reloadFromState();
                     sidebarPanel.refresh();
+                    refreshPlayerView();
                     setStatus("Session cleared.");
                 }
             });
@@ -180,7 +190,17 @@ public class MainWindow {
 
         optionsMenu.getItems().addAll(clearPositions, new SeparatorMenuItem(), clearAll);
 
-        bar.getMenus().addAll(mapMenu, optionsMenu);
+        Menu viewMenu = new Menu("View");
+        MenuItem openPlayerView = new MenuItem("Open Player View");
+        openPlayerView.setOnAction(e -> {
+            if (playerView == null) {
+                playerView = new PlayerView(gameState, stage);
+            }
+            playerView.show();
+        });
+        viewMenu.getItems().add(openPlayerView);
+
+        bar.getMenus().addAll(mapMenu, optionsMenu, viewMenu);
         return bar;
     }
 
@@ -191,6 +211,7 @@ public class MainWindow {
         }
         gameState.setMapImagePath(file.getAbsolutePath());
         mapCanvas.loadMap(file.getAbsolutePath());
+        refreshPlayerView();
         setStatus("Map loaded: " + file.getName());
     }
 
@@ -233,6 +254,7 @@ public class MainWindow {
                 }
                 gameState.entityChanged();
                 mapCanvas.repaint();
+                refreshPlayerView();
             });
             statusMenu.getItems().add(item);
         }
@@ -242,6 +264,7 @@ public class MainWindow {
         removeFromMap.setOnAction(e -> {
             mapCanvas.removeSelectedToken();
             sidebarPanel.disarmCard();
+            refreshPlayerView();
             setStatus(token.getEntity().getName() + " removed from map.");
         });
         menu.getItems().add(new SeparatorMenuItem());
@@ -297,5 +320,11 @@ public class MainWindow {
 
     private void setStatus(String message) {
         statusLabel.setText(message);
+    }
+
+    private void refreshPlayerView() {
+        if (playerView != null) {
+            playerView.refresh();
+        }
     }
 }
