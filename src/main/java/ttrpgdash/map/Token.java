@@ -1,11 +1,15 @@
 package ttrpgdash.map;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.TextAlignment;
 import ttrpgdash.model.Entity;
+import ttrpgdash.model.StatusEffect;
 import ttrpgdash.util.FileHelper;
 
 /**
@@ -21,6 +25,8 @@ import ttrpgdash.util.FileHelper;
  * especially for mounted/riding entities.
  */
 public final class Token {
+
+    private static final Map<String, Image> STATUS_ICONS = new HashMap<>();
 
     private final Entity entity;
 
@@ -95,8 +101,8 @@ public final class Token {
         gc.setTextAlign(TextAlignment.CENTER);
         gc.fillText(entity.getName(), cx, cy + radius + 14);
 
-        // Status effect dots above the token (up to 4 shown)
-        drawStatusDots(gc);
+        // Status effect icons above the token (up to 4 shown)
+        drawStatusIcons(gc);
 
         // Mounted indicator — small "M" badge if this entity is riding someone
         if (entity.getMountedOnId() != null) {
@@ -106,32 +112,60 @@ public final class Token {
         }
     }
 
-    /** Draws small coloured dots above the token for each active status effect. */
-    private void drawStatusDots(GraphicsContext gc) {
+    /** Draws status effect icons in a row above the token, up to 4 with a +N badge if more. */
+    private void drawStatusIcons(GraphicsContext gc) {
         var effects = entity.getStatusEffects();
         if (effects.isEmpty()) {
             return;
         }
 
-        int maxDots = Math.min(effects.size(), 4);
-        double dotRadius = Math.max(4, radius * 0.18);
-        double spacing = dotRadius * 2.5;
-        double startX = cx - (spacing * (maxDots - 1)) / 2.0;
-        double dotY = cy - radius - dotRadius - 4;
+        int shown = Math.min(effects.size(), 4);
+        int overflow = effects.size() - shown;
+        double iconSize = Math.max(14, radius * 0.5);
+        double gap = 3;
+        double step = iconSize + gap;
+        double startX = cx - (shown * step - gap) / 2.0;
+        double iconY = cy - radius - iconSize - 4;
 
-        for (int i = 0; i < maxDots; i++) {
-            Color dotColor = statusColor(effects.get(i));
-            gc.setFill(dotColor);
-            gc.fillOval(startX + i * spacing - dotRadius, dotY - dotRadius,
-                    dotRadius * 2, dotRadius * 2);
-            gc.setStroke(Color.BLACK);
-            gc.setLineWidth(0.5);
-            gc.strokeOval(startX + i * spacing - dotRadius, dotY - dotRadius,
-                    dotRadius * 2, dotRadius * 2);
+        for (int i = 0; i < shown; i++) {
+            String effect = effects.get(i);
+            Image icon = loadStatusIcon(effect);
+            double x = startX + i * step;
+            if (icon != null && !icon.isError()) {
+                gc.drawImage(icon, x, iconY, iconSize, iconSize);
+            } else {
+                gc.setFill(statusColor(effect));
+                gc.fillOval(x, iconY, iconSize, iconSize);
+                gc.setStroke(Color.BLACK);
+                gc.setLineWidth(0.5);
+                gc.strokeOval(x, iconY, iconSize, iconSize);
+            }
+        }
+
+        if (overflow > 0) {
+            double badgeX = startX + shown * step;
+            gc.setTextAlign(TextAlignment.LEFT);
+            gc.setFill(Color.WHITE);
+            gc.setFont(Font.font("Arial", Math.max(9, iconSize * 0.65)));
+            gc.fillText("+" + overflow, badgeX, iconY + iconSize * 0.85);
         }
     }
 
-    /** Maps a status effect name to a colour for the dot indicator. */
+    /**
+     * Returns the cached PNG for the given status effect, or null if the file is missing.
+     * Missing entries are cached so the filesystem is only checked once per effect.
+     */
+    private static Image loadStatusIcon(String effect) {
+        if (STATUS_ICONS.containsKey(effect)) {
+            return STATUS_ICONS.get(effect);
+        }
+        String path = StatusEffect.iconPath(effect);
+        Image icon = FileHelper.fileExists(path) ? FileHelper.loadImage(path) : null;
+        STATUS_ICONS.put(effect, icon);
+        return icon;
+    }
+
+    /** Fallback colour used when no PNG is found for a status effect. */
     private Color statusColor(String effect) {
         return switch (effect.toLowerCase()) {
         case "poisoned" -> Color.LIMEGREEN;

@@ -85,7 +85,8 @@ public class MainWindow {
             setStatus("Entities updated.");
         });
 
-        mapCanvas.setOnTokenRightClick(this::showTokenContextMenu);
+        mapCanvas.setOnTokenRightClick((token, point) ->
+                showTokenContextMenu(token, point.getX(), point.getY()));
 
         SplitPane splitPane = new SplitPane();
         splitPane.setOrientation(Orientation.HORIZONTAL);
@@ -142,7 +143,15 @@ public class MainWindow {
         MenuItem fitMap = new MenuItem("Fit Map to Window");
         fitMap.setOnAction(e -> mapCanvas.reloadFromState());
 
-        mapMenu.getItems().addAll(loadMap, setWidth, new SeparatorMenuItem(), fitMap);
+        MenuItem clearMap = new MenuItem("Clear Map…");
+        clearMap.setOnAction(e -> {
+            gameState.clearMapOnly();
+            mapCanvas.reloadFromState();
+            setStatus("Map cleared.");
+        });
+
+        mapMenu.getItems().addAll(loadMap, setWidth, new SeparatorMenuItem(), fitMap,
+                new SeparatorMenuItem(), clearMap);
 
         Menu optionsMenu = new Menu("Options");
 
@@ -162,7 +171,7 @@ public class MainWindow {
             confirm.showAndWait().ifPresent(btn -> {
                 if (btn == ButtonType.YES) {
                     gameState.clearAll();
-                    mapCanvas.syncTokens();
+                    mapCanvas.reloadFromState();
                     sidebarPanel.refresh();
                     setStatus("Session cleared.");
                 }
@@ -171,16 +180,7 @@ public class MainWindow {
 
         optionsMenu.getItems().addAll(clearPositions, new SeparatorMenuItem(), clearAll);
 
-        Menu statusMenu = new Menu("Status Effects");
-        for (String effect : StatusEffect.ALL) {
-            MenuItem item = new MenuItem(effect);
-            item.setOnAction(e -> {
-                // Handle status effect action
-            });
-            statusMenu.getItems().add(item);
-        }
-
-        bar.getMenus().addAll(mapMenu, optionsMenu, statusMenu);
+        bar.getMenus().addAll(mapMenu, optionsMenu);
         return bar;
     }
 
@@ -212,7 +212,7 @@ public class MainWindow {
         });
     }
 
-    private void showTokenContextMenu(Token token) {
+    private void showTokenContextMenu(Token token, double screenX, double screenY) {
         ContextMenu menu = new ContextMenu();
 
         // Entity name header (disabled, just for display)
@@ -222,11 +222,7 @@ public class MainWindow {
         menu.getItems().add(new SeparatorMenuItem());
 
         Menu statusMenu = new Menu("Buff / Debuff");
-        String[] statuses = {
-            "poisoned", "stunned", "burning", "frozen", "bleeding",
-            "cursed", "invisible", "blessed", "exhausted"
-        };
-        for (String s : statuses) {
+        for (String s : StatusEffect.ALL) {
             boolean active = token.getEntity().getStatusEffects().contains(s);
             MenuItem item = new MenuItem((active ? "✓ " : "    ") + s);
             item.setOnAction(e -> {
@@ -236,7 +232,7 @@ public class MainWindow {
                     token.getEntity().addStatusEffect(s);
                 }
                 gameState.entityChanged();
-                // Rebuild context menu to reflect new state (user must re-right-click)
+                mapCanvas.repaint();
             });
             statusMenu.getItems().add(item);
         }
@@ -255,7 +251,7 @@ public class MainWindow {
         viewDetails.setOnAction(e -> showDetailsPopup(token.getEntity()));
         menu.getItems().add(viewDetails);
 
-        menu.show(mapCanvas, javafx.geometry.Side.TOP, 0, 0);
+        menu.show(mapCanvas.getScene().getWindow(), screenX, screenY);
     }
 
     private void showDetailsPopup(Entity entity) {

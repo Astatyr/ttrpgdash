@@ -338,6 +338,21 @@ public class TokenLayer {
         return tokens.get(entityId);
     }
 
+    /**
+     * Returns the topmost token at the given canvas coordinates, or null if none.
+     * Does not select or modify any state.
+     */
+    public Token hitTest(double x, double y) {
+        List<Token> ordered = new ArrayList<>(tokens.values());
+        Collections.reverse(ordered);
+        for (Token t : ordered) {
+            if (t.contains(x, y)) {
+                return t;
+            }
+        }
+        return null;
+    }
+
     public boolean isDragging() {
         return draggedToken != null;
     }

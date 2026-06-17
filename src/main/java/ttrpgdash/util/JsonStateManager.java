@@ -92,13 +92,7 @@ public class JsonStateManager {
             GameState state = new GameState();
 
             // Map config
-            if (!root.get("mapImagePath").isJsonNull()) {
-                state.getPlayers(); // init lists before setting path directly
-                // Set without triggering save during load
-                setFieldDirectly(state, root);
-            } else {
-                setFieldDirectly(state, root);
-            }
+            setFieldDirectly(state, root);
 
             // Players
             if (root.has("players")) {
@@ -135,7 +129,7 @@ public class JsonStateManager {
         try {
             var pathField = GameState.class.getDeclaredField("mapImagePath");
             pathField.setAccessible(true);
-            if (!root.get("mapImagePath").isJsonNull()) {
+            if (root.has("mapImagePath") && !root.get("mapImagePath").isJsonNull()) {
                 pathField.set(state, root.get("mapImagePath").getAsString());
             }
 

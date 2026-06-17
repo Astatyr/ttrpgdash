@@ -132,6 +132,21 @@ public class GameState {
     }
 
     /**
+     * Clears the map image and removes all tokens from the map,
+     * but keeps the player and character list intact.
+     */
+    public void clearMapOnly() {
+        mapImagePath = null;
+        getAllEntities().forEach(e -> {
+            e.setOnMap(false);
+            e.setXFraction(0.0);
+            e.setYFraction(0.0);
+            e.setMountedOnId(null);
+        });
+        save();
+    }
+
+    /**
      * Removes all entities and resets the map. Used by Options → Clear All.
      */
     public void clearAll() {

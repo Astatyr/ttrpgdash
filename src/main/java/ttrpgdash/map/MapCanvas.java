@@ -1,7 +1,8 @@
 package ttrpgdash.map;
 
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
+import javafx.geometry.Point2D;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.image.Image;
@@ -55,8 +56,10 @@ public class MapCanvas extends Pane {
 
     private final TokenLayer tokenLayer;
 
-    /** Called when a token is right-clicked — passes the selected token for context menu. */
-    private Consumer<Token> onTokenRightClick;
+    /** Called when a token is right-clicked — passes token and screen coordinates. */
+    private BiConsumer<Token, Point2D> onTokenRightClick;
+
+    private boolean panMoved = false;
 
     private final GameState gameState;
 
@@ -100,6 +103,8 @@ public class MapCanvas extends Pane {
         String path = gameState.getMapImagePath();
         if (path != null) {
             loadMap(path);
+        } else {
+            mapImage = null;
         }
         tokenLayer.syncFromGameState();
         redraw();
@@ -143,20 +148,20 @@ public class MapCanvas extends Pane {
 
         canvas.setOnMousePressed(e -> {
             if (e.getButton() == MouseButton.SECONDARY) {
-                // Pan start
                 panning = true;
+                panMoved = false;
                 panStartX = e.getX();
                 panStartY = e.getY();
                 panOriginX = offsetX;
                 panOriginY = offsetY;
             } else if (e.getButton() == MouseButton.PRIMARY) {
-                // Drag start
                 tokenLayer.handleDragStart(e.getX(), e.getY());
             }
         });
 
         canvas.setOnMouseDragged(e -> {
             if (panning) {
+                panMoved = true;
                 offsetX = panOriginX + (e.getX() - panStartX);
                 offsetY = panOriginY + (e.getY() - panStartY);
                 notifyTokenLayerOfScale();
@@ -168,18 +173,16 @@ public class MapCanvas extends Pane {
         });
 
         canvas.setOnMouseReleased(e -> {
-            boolean wasPanning = panning;
             if (panning) {
                 panning = false;
             } else if (tokenLayer.isDragging()) {
                 tokenLayer.handleDragEnd(e.getX(), e.getY());
                 redraw();
             }
-            // Right-click on a selected token → context menu
-            if (e.getButton() == MouseButton.SECONDARY && !wasPanning) {
-                Token sel = tokenLayer.getSelectedToken();
-                if (sel != null && onTokenRightClick != null) {
-                    onTokenRightClick.accept(sel);
+            if (e.getButton() == MouseButton.SECONDARY && !panMoved) {
+                Token hit = tokenLayer.hitTest(e.getX(), e.getY());
+                if (hit != null && onTokenRightClick != null) {
+                    onTokenRightClick.accept(hit, new Point2D(e.getScreenX(), e.getScreenY()));
                 }
             }
         });
@@ -266,13 +269,18 @@ public class MapCanvas extends Pane {
         }
     }
 
+    /** Triggers a redraw without rebuilding token state. Use after in-place entity changes. */
+    public void repaint() {
+        redraw();
+    }
+
     /** Call this after adding or removing entities from the sidebar. */
     public void syncTokens() {
         tokenLayer.syncFromGameState();
         redraw();
     }
 
-    public void setOnTokenRightClick(Consumer<Token> handler) {
+    public void setOnTokenRightClick(BiConsumer<Token, Point2D> handler) {
         this.onTokenRightClick = handler;
     }
 
