@@ -7,6 +7,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.CheckMenuItem;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.Menu;
@@ -118,11 +119,6 @@ public class MainWindow {
         stage.setMinWidth(800);
         stage.setMinHeight(500);
 
-        // Prevent accidental close — require confirmation
-        stage.setOnCloseRequest(e -> {
-            e.consume();
-            confirmClose();
-        });
 
         stage.show();
 
@@ -158,8 +154,23 @@ public class MainWindow {
             setStatus("Map cleared.");
         });
 
+        CheckMenuItem toggleNames = new CheckMenuItem("Show Names");
+        toggleNames.setSelected(true);
+        toggleNames.setOnAction(e -> {
+            mapCanvas.setNamesVisible(toggleNames.isSelected());
+            refreshPlayerView();
+        });
+
+        CheckMenuItem toggleStatus = new CheckMenuItem("Show Status Effects");
+        toggleStatus.setSelected(true);
+        toggleStatus.setOnAction(e -> {
+            mapCanvas.setStatusVisible(toggleStatus.isSelected());
+            refreshPlayerView();
+        });
+
         mapMenu.getItems().addAll(loadMap, setWidth, new SeparatorMenuItem(), fitMap,
-                new SeparatorMenuItem(), clearMap);
+                new SeparatorMenuItem(), clearMap, new SeparatorMenuItem(),
+                toggleNames, toggleStatus);
 
         Menu optionsMenu = new Menu("Options");
 
@@ -307,19 +318,7 @@ public class MainWindow {
         popup.show();
     }
 
-    private void confirmClose() {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION,
-                "Close TTRPG Dash? Your session is saved automatically.",
-                ButtonType.YES, ButtonType.NO);
-        alert.setTitle("Exit");
-        alert.showAndWait().ifPresent(btn -> {
-            if (btn == ButtonType.YES) {
-                stage.close();
-            }
-        });
-    }
-
-    private void setStatus(String message) {
+private void setStatus(String message) {
         statusLabel.setText(message);
     }
 

@@ -71,12 +71,12 @@
     },
     {
       "hostile": true,
-      "id": "ansajcfmwjoraegyuhreiwmedsufhgdndjmswnfg_19ed6a3f3ad",
-      "name": "an sajcfmwjoraegyuhreiwmedsufhgdndjmswnfg",
-      "avatarPath": "assets/characters/an sajcfmwjoraegyuhreiwmedsufhgdndjmswnfg/Avatar.png",
+      "id": "ansajcfmwjoraegyuhreiwmedsufhgdndjmswnfgawdsuilgeudfyfshihklhjfusckzjhgbspocidhvxjbjcjdkvf_19ed8867675",
+      "name": "an sajcfmwjoraegyuhreiwmedsufhgdndjmswnfgaWDSuilgeudfyfshihk,lhjfus;ckzjhgbspoc;idhvxjbj;cjdkvf",
+      "avatarPath": "assets/characters/an sajcfmwjoraegyuhreiwmedsufhgdndjmswnfgaWDSuilgeudfyfshihk,lhjfus;ckzjhgbspoc;idhvxjbj;cjdkvf/Avatar.png",
       "sizeInFeet": 5.0,
-      "xFraction": 0.49820239509525294,
-      "yFraction": 0.15847309721405176,
+      "xFraction": 0.23330651649235715,
+      "yFraction": 0.5368185294438982,
       "onMap": true,
       "statusEffects": [],
       "entityType": "character"

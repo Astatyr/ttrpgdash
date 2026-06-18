@@ -69,6 +69,9 @@ public class MapCanvas extends Pane {
     /** When true, token interaction (drag, placement, context menu) is disabled. */
     private final boolean readOnly;
 
+    private boolean namesVisible = true;
+    private boolean statusVisible = true;
+
     private Image playerMapBg;
     private boolean playerMapBgLoaded = false;
 
@@ -289,7 +292,7 @@ public class MapCanvas extends Pane {
         }
 
         // Tokens
-        tokenLayer.draw(gc);
+        tokenLayer.draw(gc, namesVisible, statusVisible);
 
         // Pending placement cursor hint
         if (tokenLayer.hasPendingEntity()) {
@@ -329,6 +332,24 @@ public class MapCanvas extends Pane {
     public void syncTokens() {
         tokenLayer.syncFromGameState();
         redraw();
+    }
+
+    public void setNamesVisible(boolean visible) {
+        this.namesVisible = visible;
+        redraw();
+    }
+
+    public boolean isNamesVisible() {
+        return namesVisible;
+    }
+
+    public void setStatusVisible(boolean visible) {
+        this.statusVisible = visible;
+        redraw();
+    }
+
+    public boolean isStatusVisible() {
+        return statusVisible;
     }
 
     public void setOnTokenRightClick(BiConsumer<Token, Point2D> handler) {

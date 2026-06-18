@@ -325,18 +325,22 @@ public class TokenLayer {
     /**
      * Draws all tokens onto the given GraphicsContext.
      * Z-order: mounts drawn first, then riders on top.
+     * Pass {@code showNames = false} to suppress nameboxes.
      */
-    public void draw(GraphicsContext gc) {
-        // First pass: non-mounted tokens (mounts)
+    /**
+     * Draws all tokens onto the given GraphicsContext.
+     * Z-order: mounts drawn first, then riders on top.
+     * Pass {@code false} to suppress nameboxes or status icons.
+     */
+    public void draw(GraphicsContext gc, boolean showNames, boolean showStatus) {
         for (Token t : tokens.values()) {
             if (t.getEntity().getMountedOnId() == null) {
-                t.draw(gc);
+                t.draw(gc, showNames, showStatus);
             }
         }
-        // Second pass: mounted tokens (riders on top)
         for (Token t : tokens.values()) {
             if (t.getEntity().getMountedOnId() != null) {
-                t.draw(gc);
+                t.draw(gc, showNames, showStatus);
             }
         }
     }

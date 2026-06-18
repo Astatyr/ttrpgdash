@@ -1,7 +1,7 @@
 package ttrpgdash.map;
 
 import java.io.File;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,12 +50,12 @@ public final class Token {
     private boolean selected;
 
     /**
-     * Namebox layout cached on first draw — based on entity size (constant),
-     * so it never needs recomputing.
+     * Computed once on first draw using the radius at placement time.
+     * fontSizeRatio = fontSize / radius, so fontSize scales proportionally forever.
      */
-    private double cachedBoxW = -1;
-    private double cachedBoxH = -1;
-    private double cachedFontSize = -1;
+    private double cachedFontSizeRatio = -1;
+    private double cachedLineHRatio = -1;
+    private double cachedAscentRatio = -1;
     private List<String> cachedLines = null;
 
     /**
@@ -79,7 +79,15 @@ public final class Token {
      * Draws this token onto the given GraphicsContext.
      * Call order matters — TokenLayer draws mounts first, then riders.
      */
-    public void draw(GraphicsContext gc) {
+    /**
+     * Draws this token onto the given GraphicsContext.
+     * Pass {@code showName = false} to suppress the namebox (cinematic mode).
+     */
+    /**
+     * Draws this token onto the given GraphicsContext.
+     * Pass {@code false} to suppress nameboxes or status icons (cinematic mode).
+     */
+    public void draw(GraphicsContext gc, boolean showName, boolean showStatus) {
         double x = cx - radius;
         double y = cy - radius;
         double diameter = radius * 2;
@@ -110,8 +118,12 @@ public final class Token {
         }
         gc.strokeOval(x, y, diameter, diameter);
 
-        drawNameBox(gc);
-        drawStatusIcons(gc);
+        if (showName) {
+            drawNameBox(gc);
+        }
+        if (showStatus) {
+            drawStatusIcons(gc);
+        }
 
         if (entity.getMountedOnId() != null) {
             gc.setFill(Color.GOLD);
@@ -121,96 +133,125 @@ public final class Token {
         }
     }
 
+    /**
+     * Computed once on first draw. Greedy word-packing at decreasing font sizes until
+     * all packed lines fit both horizontally (each line ≤ textAreaW) and vertically
+     * (N lines + gaps ≤ 90% of boxH). Font stored as a ratio so it scales with radius.
+     */
     private void ensureNameboxCached() {
-        if (cachedLines != null) {
+        if (cachedLines != null || radius <= 0) {
             return;
         }
 
-        double sizeInFeet = entity.getSizeInFeet();
-        cachedBoxW = Math.min(Math.max(60, sizeInFeet * 14), 180);
-        double baseBoxH = Math.min(Math.max(20, sizeInFeet * 4.5), 45);
+        double boxW = radius * 1.8;
+        double boxH = radius * 0.55;
+        double textAreaW = boxW * 0.8;
+        double startFontSize = boxH * 0.42;
 
         String name = entity.getName();
-        double textAreaW = cachedBoxW * 0.8;
-        double startFontSize = Math.max(7, baseBoxH * 0.42);
-
-        // Try to fit in a single line at the natural font size
-        Text measurer = new Text(name);
-        measurer.setFont(loadCinzel(startFontSize));
-
-        if (measurer.getBoundsInLocal().getWidth() <= textAreaW) {
-            cachedFontSize = startFontSize;
-            cachedBoxH = baseBoxH;
-            cachedLines = List.of(name);
-            return;
-        }
-
-        // Try a 2-line split at word boundaries, preferring balanced line lengths
         String[] words = name.split(" ");
-        if (words.length > 1) {
-            double bestScore = Double.MAX_VALUE;
-            List<String> bestSplit = null;
 
-            for (int split = 1; split < words.length; split++) {
-                String line1 = String.join(" ", Arrays.copyOfRange(words, 0, split));
-                String line2 = String.join(" ", Arrays.copyOfRange(words, split, words.length));
-                Text m1 = new Text(line1);
-                m1.setFont(loadCinzel(startFontSize));
-                Text m2 = new Text(line2);
-                m2.setFont(loadCinzel(startFontSize));
-                double w1 = m1.getBoundsInLocal().getWidth();
-                double w2 = m2.getBoundsInLocal().getWidth();
-                if (w1 <= textAreaW && w2 <= textAreaW) {
-                    double score = Math.abs(w1 - w2);
-                    if (score < bestScore) {
-                        bestScore = score;
-                        bestSplit = List.of(line1, line2);
+        Text measurer = new Text();
+
+        for (double fontSize = startFontSize; fontSize >= 0.5; fontSize -= 0.5) {
+            double lineH = fontSize * 1.15;
+            double gap = fontSize * 0.25;
+            // How many lines fit vertically inside the 90% usable height?
+            int maxLines = (int) ((boxH * 0.9 + gap) / (lineH + gap));
+            if (maxLines < 1) {
+                continue;
+            }
+
+            // Greedy word packing with character-level breaking for long words
+            measurer.setFont(loadCinzel(fontSize));
+            List<String> lines = new ArrayList<>();
+            String current = "";
+            for (String word : words) {
+                String candidate = current.isEmpty() ? word : current + " " + word;
+                measurer.setText(candidate);
+                if (measurer.getBoundsInLocal().getWidth() <= textAreaW) {
+                    current = candidate;
+                } else {
+                    if (!current.isEmpty()) {
+                        lines.add(current);
+                        current = "";
+                    }
+                    // Try the word alone on a new line
+                    measurer.setText(word);
+                    if (measurer.getBoundsInLocal().getWidth() <= textAreaW) {
+                        current = word;
+                    } else {
+                        // Word too long — break at character level
+                        String remaining = word;
+                        while (!remaining.isEmpty()) {
+                            int cut = 1;
+                            for (int c = 1; c <= remaining.length(); c++) {
+                                measurer.setText(remaining.substring(0, c));
+                                if (measurer.getBoundsInLocal().getWidth() > textAreaW) {
+                                    break;
+                                }
+                                cut = c;
+                            }
+                            lines.add(remaining.substring(0, cut));
+                            remaining = remaining.substring(cut);
+                        }
                     }
                 }
             }
+            if (!current.isEmpty()) {
+                lines.add(current);
+            }
 
-            if (bestSplit != null) {
-                cachedFontSize = startFontSize;
-                cachedBoxH = baseBoxH * 1.9;
-                cachedLines = bestSplit;
+            if (lines.size() <= maxLines) {
+                cachedFontSizeRatio = fontSize / radius;
+                cachedLines = lines;
+                storeMetrics(fontSize);
                 return;
             }
         }
 
-        // No valid word split — shrink font until it fits on one line
-        double fontSize = startFontSize;
-        while (fontSize > 7) {
-            measurer.setFont(loadCinzel(fontSize));
-            if (measurer.getBoundsInLocal().getWidth() <= textAreaW) {
-                break;
-            }
-            fontSize -= 0.5;
-        }
-        cachedFontSize = fontSize;
-        cachedBoxH = baseBoxH;
+        // Absolute fallback
+        cachedFontSizeRatio = 0.5 / radius;
         cachedLines = List.of(name);
+        storeMetrics(0.5);
+    }
+
+    private void storeMetrics(double fontSize) {
+        Text m = new Text("Xg");
+        m.setFont(loadCinzel(fontSize));
+        var b = m.getBoundsInLocal();
+        cachedAscentRatio = (-b.getMinY()) / radius;
+        cachedLineHRatio = b.getHeight() / radius;
     }
 
     private void drawNameBox(GraphicsContext gc) {
+        if (radius <= 0) {
+            return;
+        }
         ensureNameboxCached();
 
-        double boxX = cx - cachedBoxW / 2.0;
+        double boxW = radius * 1.8;
+        double boxH = radius * 0.55;
+        double fontSize = cachedFontSizeRatio * radius;
+        double boxX = cx - boxW / 2.0;
         double boxY = cy + radius * 0.6;
 
         Image box = getNameboxImage();
         if (box != null && !box.isError()) {
-            gc.drawImage(box, boxX, boxY, cachedBoxW, cachedBoxH);
+            gc.drawImage(box, boxX, boxY, boxW, boxH);
         }
 
-        gc.setFont(loadCinzel(cachedFontSize));
+        gc.setFont(loadCinzel(fontSize));
         gc.setFill(Color.BLACK);
         gc.setTextAlign(TextAlignment.CENTER);
 
-        if (cachedLines.size() == 1) {
-            gc.fillText(cachedLines.get(0), cx, boxY + cachedBoxH * 0.65, cachedBoxW * 0.8);
-        } else {
-            gc.fillText(cachedLines.get(0), cx, boxY + cachedBoxH * 0.35, cachedBoxW * 0.8);
-            gc.fillText(cachedLines.get(1), cx, boxY + cachedBoxH * 0.70, cachedBoxW * 0.8);
+        double lineH = cachedLineHRatio * radius;
+        double ascent = cachedAscentRatio * radius;
+        double gap = fontSize * 0.25;
+        double totalH = cachedLines.size() * lineH + (cachedLines.size() - 1) * gap;
+        double startY = boxY + (boxH - totalH) / 2.0;
+        for (int i = 0; i < cachedLines.size(); i++) {
+            gc.fillText(cachedLines.get(i), cx, startY + ascent + i * (lineH + gap));
         }
     }
 
