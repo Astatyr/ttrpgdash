@@ -16,6 +16,7 @@ import com.google.gson.JsonParser;
 import ttrpgdash.model.CharacterEntity;
 import ttrpgdash.model.Entity;
 import ttrpgdash.model.GameState;
+import ttrpgdash.model.MusicTrack;
 import ttrpgdash.model.PlayerEntity;
 
 /**
@@ -31,26 +32,35 @@ import ttrpgdash.model.PlayerEntity;
  */
 public class JsonStateManager {
 
-    private static final String STATE_FILE = "data/state.json";
+    /** Default save path used when no scene-specific path is configured. */
+    public static final String DEFAULT_STATE_FILE = "data/state.json";
+
+    private static final String STATE_FILE = DEFAULT_STATE_FILE;
 
     private static final Gson GSON = new GsonBuilder()
             .setPrettyPrinting()
             .create();
 
     /**
-     * Serialises the given GameState to data/state.json.
+     * Serialises the given GameState to the default data/state.json path.
      */
     public static void save(GameState state) {
+        save(state, STATE_FILE);
+    }
+
+    /**
+     * Serialises the given GameState to the specified file path.
+     * Creates parent directories if they do not exist.
+     */
+    public static void save(GameState state, String filePath) {
         try {
-            Path path = Paths.get(STATE_FILE);
+            Path path = Paths.get(filePath);
             Files.createDirectories(path.getParent());
 
-            // Wrap into a raw structure so Gson serialises subclass fields correctly
             JsonObject root = new JsonObject();
             root.addProperty("mapImagePath", state.getMapImagePath());
             root.addProperty("mapWidthInFeet", state.getMapWidthInFeet());
 
-            // Serialise players with type tag
             JsonArray playersArr = new JsonArray();
             for (PlayerEntity p : state.getPlayers()) {
                 JsonObject obj = GSON.toJsonTree(p).getAsJsonObject();
@@ -59,7 +69,6 @@ public class JsonStateManager {
             }
             root.add("players", playersArr);
 
-            // Serialise characters with type tag
             JsonArray charsArr = new JsonArray();
             for (CharacterEntity c : state.getCharacters()) {
                 JsonObject obj = GSON.toJsonTree(c).getAsJsonObject();
@@ -67,6 +76,8 @@ public class JsonStateManager {
                 charsArr.add(obj);
             }
             root.add("characters", charsArr);
+
+            root.add("musicTracks", GSON.toJsonTree(state.getMusicTracks()));
 
             Files.writeString(path, GSON.toJson(root));
 
@@ -79,10 +90,17 @@ public class JsonStateManager {
      * Deserialises GameState from data/state.json, or returns a fresh state if missing.
      */
     public static GameState load() {
-        Path path = Paths.get(STATE_FILE);
+        return load(STATE_FILE);
+    }
+
+    /**
+     * Deserialises GameState from the given file path, or returns a fresh state if missing.
+     */
+    public static GameState load(String filePath) {
+        Path path = Paths.get(filePath);
 
         if (!Files.exists(path)) {
-            System.out.println("[JsonStateManager] No state.json found — starting fresh.");
+            System.out.println("[JsonStateManager] No file found at " + filePath + " — starting fresh.");
             return new GameState();
         }
 
@@ -92,10 +110,8 @@ public class JsonStateManager {
 
             GameState state = new GameState();
 
-            // Map config
             setFieldDirectly(state, root);
 
-            // Players
             if (root.has("players")) {
                 for (JsonElement el : root.getAsJsonArray("players")) {
                     PlayerEntity p = GSON.fromJson(el, PlayerEntity.class);
@@ -103,7 +119,6 @@ public class JsonStateManager {
                 }
             }
 
-            // Characters
             if (root.has("characters")) {
                 for (JsonElement el : root.getAsJsonArray("characters")) {
                     CharacterEntity c = GSON.fromJson(el, CharacterEntity.class);
@@ -111,15 +126,19 @@ public class JsonStateManager {
                 }
             }
 
-            // Normalise any absolute paths that may have been persisted previously
+            if (root.has("musicTracks")) {
+                for (JsonElement el : root.getAsJsonArray("musicTracks")) {
+                    state.getMusicTracks().add(GSON.fromJson(el, MusicTrack.class));
+                }
+            }
+
             for (Entity e : state.getAllEntities()) {
                 e.setAvatarPath(FileHelper.normalizeToRelative(e.getAvatarPath()));
                 e.setDetailsPath(FileHelper.normalizeToRelative(e.getDetailsPath()));
             }
-            // Persist normalised paths so state.json is immediately up-to-date
-            save(state);
+            save(state, filePath);
 
-            System.out.println("[JsonStateManager] Loaded state: "
+            System.out.println("[JsonStateManager] Loaded state from " + filePath + ": "
                     + state.getPlayers().size() + " players, "
                     + state.getCharacters().size() + " characters.");
             return state;

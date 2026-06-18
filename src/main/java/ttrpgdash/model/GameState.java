@@ -34,6 +34,15 @@ public class GameState {
     /** All NPCs, enemies, and creatures in this session. */
     private final List<CharacterEntity> characters;
 
+    /** Music tracks for this scene. */
+    private final List<MusicTrack> musicTracks;
+
+    /**
+     * Runtime save path — set by SceneStateManager so each scene writes to its own file.
+     * Transient so Gson does not serialise it.
+     */
+    private transient String savePath = JsonStateManager.DEFAULT_STATE_FILE;
+
     /**
      * Creates a fresh GameState with default values.
      */
@@ -42,6 +51,7 @@ public class GameState {
         this.mapWidthInFeet = 100.0;
         this.players = new ArrayList<>();
         this.characters = new ArrayList<>();
+        this.musicTracks = new ArrayList<>();
     }
 
     public String getMapImagePath() {
@@ -171,8 +181,20 @@ public class GameState {
         save();
     }
 
-    /** Saves the current state to data/state.json. Called automatically by all mutators. */
+    public List<MusicTrack> getMusicTracks() {
+        return musicTracks;
+    }
+
+    /**
+     * Configures the file path this GameState saves to.
+     * Set by SceneStateManager after loading a scene so saves go to the right file.
+     */
+    public void setSavePath(String path) {
+        this.savePath = path;
+    }
+
+    /** Saves the current state to its configured path. Called automatically by all mutators. */
     public void save() {
-        JsonStateManager.save(this);
+        JsonStateManager.save(this, savePath);
     }
 }

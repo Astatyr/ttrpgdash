@@ -24,48 +24,45 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+import ttrpgdash.audio.MusicController;
 import ttrpgdash.map.MapCanvas;
 import ttrpgdash.map.Token;
 import ttrpgdash.model.Entity;
 import ttrpgdash.model.GameState;
+import ttrpgdash.model.SceneEntry;
+import ttrpgdash.model.SceneManager;
 import ttrpgdash.model.StatusEffect;
 import ttrpgdash.sidebar.SidebarPanel;
 import ttrpgdash.util.FileHelper;
+import ttrpgdash.util.SceneStateManager;
 
 /**
- * The DM's main window. Assembles:
- *   - MenuBar (Options → Clear All, Map → Load Map, Map → Set Width)
- *   - SidebarPanel (left)
- *   - MapCanvas (centre)
- *   - Status bar (bottom)
- *
- * MainWindow owns the GameState and passes it to child components.
- * It wires up all the cross-component callbacks:
- *   - Sidebar "Place" → MapCanvas pending entity
- *   - MapCanvas token right-click → context menu (buff/debuff, delete from map)
- *   - Sidebar "Details" → open Details.png in a popup
+ * The DM's main window. Assembles the menu bar, sidebar, map canvas,
+ * scene panel, and status bar. Manages scene switching and music.
  */
 public class MainWindow {
 
-    private final GameState gameState;
+    private final SceneManager sceneManager;
+    private final MusicController musicController = new MusicController();
     private Stage stage;
 
-    private final MapCanvas mapCanvas;
-    private final SidebarPanel sidebarPanel;
+    private GameState gameState;
+    private MapCanvas mapCanvas;
+    private SidebarPanel sidebarPanel;
+    private ScenePanel scenePanel;
+    private SplitPane splitPane;
 
     private final Label statusLabel = new Label("Ready");
-
     private PlayerView playerView;
 
     /**
-     * Initialises the window components for the given game state.
+     * Initialises the window for the given scene manager.
      * Call {@link #show(Stage)} afterwards to display the window.
      */
-    public MainWindow(GameState gameState) {
-        this.gameState = gameState;
-
-        mapCanvas = new MapCanvas(gameState);
-        sidebarPanel = new SidebarPanel(gameState);
+    public MainWindow(SceneManager sceneManager) {
+        this.sceneManager = sceneManager;
+        this.gameState = SceneStateManager.loadScene(sceneManager.getActiveSceneId());
+        buildComponents();
     }
 
     /**
@@ -73,28 +70,12 @@ public class MainWindow {
      */
     public void show(Stage stage) {
         this.stage = stage;
-        MenuBar menuBar = buildMenuBar();
 
-        sidebarPanel.setOwnerStage(stage);
+        scenePanel.setOwnerStage(stage);
+        wireSidebar();
+        wireMapCanvas();
 
-        sidebarPanel.setOnPlaceEntity(entity -> {
-            mapCanvas.setPendingEntity(entity);
-            setStatus("Click on the map to place: " + entity.getName());
-        });
-
-        sidebarPanel.setOnDetailsEntity(this::showDetailsPopup);
-
-        sidebarPanel.setOnEntitiesChanged(() -> {
-            mapCanvas.syncTokens();
-            refreshPlayerView();
-            setStatus("Entities updated.");
-        });
-
-        mapCanvas.setOnTokenRightClick((token, point) ->
-                showTokenContextMenu(token, point.getX(), point.getY()));
-        mapCanvas.setOnTokensChanged(this::refreshPlayerView);
-
-        SplitPane splitPane = new SplitPane();
+        splitPane = new SplitPane();
         splitPane.setOrientation(Orientation.HORIZONTAL);
         splitPane.getItems().addAll(sidebarPanel, mapCanvas);
         splitPane.setDividerPositions(0.22);
@@ -106,33 +87,141 @@ public class MainWindow {
                 "-fx-background-color: #0d0d1a; -fx-border-color: #1a1a3a; -fx-border-width: 1 0 0 0;");
         statusBar.setAlignment(Pos.CENTER_LEFT);
 
-        BorderPane root = new BorderPane();
+        MenuBar menuBar = buildMenuBar();
         Label versionLabel = new Label("v" + App.VERSION);
         versionLabel.setStyle("-fx-text-fill: #444; -fx-font-size: 11px; -fx-padding: 4 12 4 8;");
         HBox topBar = new HBox(menuBar, versionLabel);
         HBox.setHgrow(menuBar, Priority.ALWAYS);
         topBar.setAlignment(Pos.CENTER_LEFT);
         topBar.setStyle("-fx-background-color: #16163a;");
+
+        BorderPane root = new BorderPane();
         root.setTop(topBar);
         root.setCenter(splitPane);
+        root.setRight(scenePanel);
         root.setBottom(statusBar);
         root.setStyle("-fx-background-color: #0d0d1a;");
 
-        Scene scene = new Scene(root, 1280, 800);
+        Scene scene = new Scene(root, 1440, 800);
         scene.setFill(Color.rgb(13, 13, 26));
 
         stage.setScene(scene);
         stage.setTitle("TTRPG Dash — DM View");
-        stage.setMinWidth(800);
+        stage.setMinWidth(900);
         stage.setMinHeight(500);
-
 
         stage.show();
 
         mapCanvas.reloadFromState();
         sidebarPanel.refresh();
-        setStatus("Session loaded. " + gameState.getPlayers().size() + " players, "
-                + gameState.getCharacters().size() + " characters.");
+        setStatus("Scene: " + activeSceneName());
+    }
+
+    private void buildComponents() {
+        mapCanvas = new MapCanvas(gameState);
+        sidebarPanel = new SidebarPanel(gameState);
+        scenePanel = new ScenePanel(sceneManager, musicController, gameState);
+        wireScenePanel();
+    }
+
+    private void wireSidebar() {
+        sidebarPanel.setOwnerStage(stage);
+        sidebarPanel.setOnPlaceEntity(entity -> {
+            mapCanvas.setPendingEntity(entity);
+            setStatus("Click on the map to place: " + entity.getName());
+        });
+        sidebarPanel.setOnDetailsEntity(this::showDetailsPopup);
+        sidebarPanel.setOnEntitiesChanged(() -> {
+            mapCanvas.syncTokens();
+            refreshPlayerView();
+            setStatus("Entities updated.");
+        });
+    }
+
+    private void wireMapCanvas() {
+        mapCanvas.setOnTokenRightClick((token, point) ->
+                showTokenContextMenu(token, point.getX(), point.getY()));
+        mapCanvas.setOnTokensChanged(this::refreshPlayerView);
+    }
+
+    private void wireScenePanel() {
+        scenePanel.setOnSceneSwitch(this::switchToScene);
+        scenePanel.setOnSceneAdd(this::addScene);
+        scenePanel.setOnSceneMove((id, delta) -> {
+            sceneManager.moveScene(id, delta);
+            SceneStateManager.saveMaster(sceneManager);
+            scenePanel.refreshSceneList();
+        });
+        scenePanel.setOnSceneRename((id, name) -> {
+            sceneManager.getById(id).ifPresent(e -> e.setName(name));
+            SceneStateManager.saveMaster(sceneManager);
+            scenePanel.refreshSceneList();
+            scenePanel.refreshMusic(gameState);
+        });
+        scenePanel.setOnSceneDelete(this::deleteScene);
+    }
+
+    private void switchToScene(String sceneId) {
+        if (sceneId.equals(sceneManager.getActiveSceneId())) {
+            return;
+        }
+
+        gameState.save();
+        musicController.stopAll();
+
+        gameState = SceneStateManager.loadScene(sceneId);
+        sceneManager.setActiveSceneId(sceneId);
+        SceneStateManager.saveMaster(sceneManager);
+
+        mapCanvas = new MapCanvas(gameState);
+        sidebarPanel = new SidebarPanel(gameState);
+        wireSidebar();
+        wireMapCanvas();
+
+        double divPos = splitPane.getDividerPositions()[0];
+        splitPane.getItems().setAll(sidebarPanel, mapCanvas);
+        splitPane.setDividerPositions(divPos);
+
+        mapCanvas.reloadFromState();
+        sidebarPanel.refresh();
+
+        scenePanel.refreshSceneList();
+        scenePanel.refreshMusic(gameState);
+
+        if (playerView != null && playerView.isShowing()) {
+            GameState newGs = gameState;
+            playerView.fadeTransitionTo(() -> playerView.refreshScene(newGs));
+        }
+
+        setStatus("Scene: " + activeSceneName());
+    }
+
+    private void addScene() {
+        String id = "scene_" + Long.toHexString(System.currentTimeMillis());
+        int order = sceneManager.getScenes().size();
+        SceneEntry entry = new SceneEntry(id, "New Scene", order);
+        sceneManager.addScene(entry);
+        GameState newGs = SceneStateManager.createNewScene(id);
+        newGs.save();
+        SceneStateManager.saveMaster(sceneManager);
+        switchToScene(id);
+    }
+
+    private void deleteScene(String id) {
+        if (sceneManager.getScenes().size() <= 1) {
+            return;
+        }
+        boolean wasActive = id.equals(sceneManager.getActiveSceneId());
+        sceneManager.removeScene(id);
+        if (wasActive) {
+            String nextId = sceneManager.getScenes().get(0).getId();
+            sceneManager.setActiveSceneId(nextId);
+            SceneStateManager.saveMaster(sceneManager);
+            switchToScene(nextId);
+        } else {
+            SceneStateManager.saveMaster(sceneManager);
+            scenePanel.refreshSceneList();
+        }
     }
 
     private MenuBar buildMenuBar() {
@@ -192,7 +281,7 @@ public class MainWindow {
         MenuItem clearAll = new MenuItem("Clear All…");
         clearAll.setOnAction(e -> {
             Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                    "This will remove all entities and reset the map. Continue?",
+                    "Remove all entities and reset the map for this scene?",
                     ButtonType.YES, ButtonType.NO);
             confirm.setTitle("Clear All");
             confirm.showAndWait().ifPresent(btn -> {
@@ -201,7 +290,7 @@ public class MainWindow {
                     mapCanvas.reloadFromState();
                     sidebarPanel.refresh();
                     refreshPlayerView();
-                    setStatus("Session cleared.");
+                    setStatus("Scene cleared.");
                 }
             });
         });
@@ -212,9 +301,9 @@ public class MainWindow {
         MenuItem openPlayerView = new MenuItem("Open Player View");
         openPlayerView.setOnAction(e -> {
             if (playerView == null) {
-                playerView = new PlayerView(gameState, stage);
+                playerView = new PlayerView(stage);
             }
-            playerView.show();
+            playerView.show(gameState);
         });
         viewMenu.getItems().add(openPlayerView);
 
@@ -255,7 +344,6 @@ public class MainWindow {
     private void showTokenContextMenu(Token token, double screenX, double screenY) {
         ContextMenu menu = new ContextMenu();
 
-        // Entity name header (disabled, just for display)
         MenuItem nameItem = new MenuItem(token.getEntity().getName());
         nameItem.setDisable(true);
         menu.getItems().add(nameItem);
@@ -325,13 +413,17 @@ public class MainWindow {
         popup.show();
     }
 
-private void setStatus(String message) {
+    private void setStatus(String message) {
         statusLabel.setText(message);
     }
 
     private void refreshPlayerView() {
-        if (playerView != null) {
+        if (playerView != null && playerView.isShowing()) {
             playerView.refresh();
         }
+    }
+
+    private String activeSceneName() {
+        return sceneManager.getActiveEntry().map(SceneEntry::getName).orElse("Unknown");
     }
 }

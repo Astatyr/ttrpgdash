@@ -18,5 +18,8 @@ dist/
 target/
 bin/
 
+# Assets
+assets/
+
 # Runtime
 *.log

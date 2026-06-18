@@ -164,6 +164,25 @@ public class FileHelper {
     }
 
     /**
+     * Opens a file chooser restricted to assets/music/ for selecting audio tracks.
+     * Returns null if the user cancels or selects nothing.
+     */
+    public static File browseForMusic(Stage owner) {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Select Music File");
+        chooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("Audio Files", "*.mp3", "*.wav")
+        );
+        File initial = safeDir(new File(MUSIC_DIR), new File(ASSETS_DIR));
+        chooser.setInitialDirectory(initial);
+        File file = chooser.showOpenDialog(owner);
+        if (file == null || !file.exists()) {
+            return null;
+        }
+        return file;
+    }
+
+    /**
      * Normalises a path string to a relative path.
      * If the path is already relative, it is returned unchanged.
      * Useful for sanitising paths loaded from persisted state.
