@@ -21,6 +21,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import ttrpgdash.map.MapCanvas;
@@ -106,7 +107,13 @@ public class MainWindow {
         statusBar.setAlignment(Pos.CENTER_LEFT);
 
         BorderPane root = new BorderPane();
-        root.setTop(menuBar);
+        Label versionLabel = new Label("v" + App.VERSION);
+        versionLabel.setStyle("-fx-text-fill: #444; -fx-font-size: 11px; -fx-padding: 4 12 4 8;");
+        HBox topBar = new HBox(menuBar, versionLabel);
+        HBox.setHgrow(menuBar, Priority.ALWAYS);
+        topBar.setAlignment(Pos.CENTER_LEFT);
+        topBar.setStyle("-fx-background-color: #16163a;");
+        root.setTop(topBar);
         root.setCenter(splitPane);
         root.setBottom(statusBar);
         root.setStyle("-fx-background-color: #0d0d1a;");
