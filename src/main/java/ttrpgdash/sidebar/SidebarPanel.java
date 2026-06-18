@@ -250,7 +250,7 @@ public class SidebarPanel extends VBox {
      */
     private String resolveAsset(File folder, String filename) {
         File f = new File(folder, filename);
-        return f.exists() ? f.getAbsolutePath() : null;
+        return f.exists() ? FileHelper.toRelativePath(f) : null;
     }
 
     /**

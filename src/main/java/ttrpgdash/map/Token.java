@@ -1,7 +1,9 @@
 package ttrpgdash.map;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import javafx.scene.canvas.GraphicsContext;
@@ -47,9 +49,14 @@ public final class Token {
 
     private boolean selected;
 
-    /** Cached to avoid re-measuring text on every frame; invalidated when radius changes. */
-    private double cachedNameFontRadius = -1;
-    private double cachedNameFontSize = 10;
+    /**
+     * Namebox layout cached on first draw — based on entity size (constant),
+     * so it never needs recomputing.
+     */
+    private double cachedBoxW = -1;
+    private double cachedBoxH = -1;
+    private double cachedFontSize = -1;
+    private List<String> cachedLines = null;
 
     /**
      * Creates a token for the given entity at the specified canvas position and radius.
@@ -114,42 +121,97 @@ public final class Token {
         }
     }
 
-    private void drawNameBox(GraphicsContext gc) {
-        double boxW = Math.max(60, radius * 2.25);
-        double boxH = Math.max(24, radius * 0.75);
-        double boxX = cx - boxW / 2.0;
-        double boxY = cy + radius * 0.6;
-
-        Image box = getNameboxImage();
-        if (box != null && !box.isError()) {
-            gc.drawImage(box, boxX, boxY, boxW, boxH);
+    private void ensureNameboxCached() {
+        if (cachedLines != null) {
+            return;
         }
 
-        double fontSize = getNameFontSize(boxW, boxH);
-        gc.setFont(loadCinzel(fontSize));
-        gc.setFill(Color.BLACK);
-        gc.setTextAlign(TextAlignment.CENTER);
-        gc.fillText(entity.getName(), cx, boxY + boxH * 0.65, boxW * 0.8);
-    }
+        double sizeInFeet = entity.getSizeInFeet();
+        cachedBoxW = Math.min(Math.max(60, sizeInFeet * 14), 180);
+        double baseBoxH = Math.min(Math.max(20, sizeInFeet * 4.5), 45);
 
-    /** Returns the fitting font size for the name, recomputed only when radius changes. */
-    private double getNameFontSize(double boxW, double boxH) {
-        if (radius == cachedNameFontRadius) {
-            return cachedNameFontSize;
+        String name = entity.getName();
+        double textAreaW = cachedBoxW * 0.8;
+        double startFontSize = Math.max(7, baseBoxH * 0.42);
+
+        // Try to fit in a single line at the natural font size
+        Text measurer = new Text(name);
+        measurer.setFont(loadCinzel(startFontSize));
+
+        if (measurer.getBoundsInLocal().getWidth() <= textAreaW) {
+            cachedFontSize = startFontSize;
+            cachedBoxH = baseBoxH;
+            cachedLines = List.of(name);
+            return;
         }
-        cachedNameFontRadius = radius;
-        double textAreaW = boxW * 0.8;
-        double fontSize = Math.max(7, boxH * 0.45);
+
+        // Try a 2-line split at word boundaries, preferring balanced line lengths
+        String[] words = name.split(" ");
+        if (words.length > 1) {
+            double bestScore = Double.MAX_VALUE;
+            List<String> bestSplit = null;
+
+            for (int split = 1; split < words.length; split++) {
+                String line1 = String.join(" ", Arrays.copyOfRange(words, 0, split));
+                String line2 = String.join(" ", Arrays.copyOfRange(words, split, words.length));
+                Text m1 = new Text(line1);
+                m1.setFont(loadCinzel(startFontSize));
+                Text m2 = new Text(line2);
+                m2.setFont(loadCinzel(startFontSize));
+                double w1 = m1.getBoundsInLocal().getWidth();
+                double w2 = m2.getBoundsInLocal().getWidth();
+                if (w1 <= textAreaW && w2 <= textAreaW) {
+                    double score = Math.abs(w1 - w2);
+                    if (score < bestScore) {
+                        bestScore = score;
+                        bestSplit = List.of(line1, line2);
+                    }
+                }
+            }
+
+            if (bestSplit != null) {
+                cachedFontSize = startFontSize;
+                cachedBoxH = baseBoxH * 1.9;
+                cachedLines = bestSplit;
+                return;
+            }
+        }
+
+        // No valid word split — shrink font until it fits on one line
+        double fontSize = startFontSize;
         while (fontSize > 7) {
-            Text measurer = new Text(entity.getName());
             measurer.setFont(loadCinzel(fontSize));
             if (measurer.getBoundsInLocal().getWidth() <= textAreaW) {
                 break;
             }
             fontSize -= 0.5;
         }
-        cachedNameFontSize = fontSize;
-        return fontSize;
+        cachedFontSize = fontSize;
+        cachedBoxH = baseBoxH;
+        cachedLines = List.of(name);
+    }
+
+    private void drawNameBox(GraphicsContext gc) {
+        ensureNameboxCached();
+
+        double boxX = cx - cachedBoxW / 2.0;
+        double boxY = cy + radius * 0.6;
+
+        Image box = getNameboxImage();
+        if (box != null && !box.isError()) {
+            gc.drawImage(box, boxX, boxY, cachedBoxW, cachedBoxH);
+        }
+
+        gc.setFont(loadCinzel(cachedFontSize));
+        gc.setFill(Color.BLACK);
+        gc.setTextAlign(TextAlignment.CENTER);
+
+        if (cachedLines.size() == 1) {
+            gc.fillText(cachedLines.get(0), cx, boxY + cachedBoxH * 0.65, cachedBoxW * 0.8);
+        } else {
+            gc.fillText(cachedLines.get(0), cx, boxY + cachedBoxH * 0.35, cachedBoxW * 0.8);
+            gc.fillText(cachedLines.get(1), cx, boxY + cachedBoxH * 0.70, cachedBoxW * 0.8);
+        }
     }
 
     /** Draws status effect icons in a row above the token, up to 4 with a +N badge if more. */

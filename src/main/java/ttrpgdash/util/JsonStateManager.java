@@ -14,6 +14,7 @@ import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 
 import ttrpgdash.model.CharacterEntity;
+import ttrpgdash.model.Entity;
 import ttrpgdash.model.GameState;
 import ttrpgdash.model.PlayerEntity;
 
@@ -110,6 +111,14 @@ public class JsonStateManager {
                 }
             }
 
+            // Normalise any absolute paths that may have been persisted previously
+            for (Entity e : state.getAllEntities()) {
+                e.setAvatarPath(FileHelper.normalizeToRelative(e.getAvatarPath()));
+                e.setDetailsPath(FileHelper.normalizeToRelative(e.getDetailsPath()));
+            }
+            // Persist normalised paths so state.json is immediately up-to-date
+            save(state);
+
             System.out.println("[JsonStateManager] Loaded state: "
                     + state.getPlayers().size() + " players, "
                     + state.getCharacters().size() + " characters.");
@@ -130,7 +139,8 @@ public class JsonStateManager {
             var pathField = GameState.class.getDeclaredField("mapImagePath");
             pathField.setAccessible(true);
             if (root.has("mapImagePath") && !root.get("mapImagePath").isJsonNull()) {
-                pathField.set(state, root.get("mapImagePath").getAsString());
+                pathField.set(state,
+                        FileHelper.normalizeToRelative(root.get("mapImagePath").getAsString()));
             }
 
             var feetField = GameState.class.getDeclaredField("mapWidthInFeet");

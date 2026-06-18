@@ -1,6 +1,8 @@
 package ttrpgdash.util;
 
 import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import javafx.scene.image.Image;
 import javafx.stage.DirectoryChooser;
@@ -159,5 +161,36 @@ public class FileHelper {
     public static String generateId(String name) {
         String base = name.toLowerCase().replaceAll("[^a-z0-9]", "");
         return base + "_" + Long.toHexString(System.currentTimeMillis());
+    }
+
+    /**
+     * Normalises a path string to a relative path.
+     * If the path is already relative, it is returned unchanged.
+     * Useful for sanitising paths loaded from persisted state.
+     */
+    public static String normalizeToRelative(String path) {
+        if (path == null) {
+            return null;
+        }
+        File f = new File(path);
+        if (!f.isAbsolute()) {
+            return path;
+        }
+        return toRelativePath(f);
+    }
+
+    /**
+     * Converts an absolute file path to a path relative to the working directory,
+     * using forward slashes. Falls back to the absolute path if relativisation fails
+     * (e.g. different drive on Windows).
+     */
+    public static String toRelativePath(File file) {
+        try {
+            Path workDir = Paths.get(System.getProperty("user.dir")).toAbsolutePath();
+            Path relative = workDir.relativize(file.toPath().toAbsolutePath());
+            return relative.toString().replace('\\', '/');
+        } catch (Exception e) {
+            return file.getAbsolutePath();
+        }
     }
 }

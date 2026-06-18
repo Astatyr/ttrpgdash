@@ -209,8 +209,9 @@ public class MainWindow {
         if (file == null) {
             return;
         }
-        gameState.setMapImagePath(file.getAbsolutePath());
-        mapCanvas.loadMap(file.getAbsolutePath());
+        String mapPath = FileHelper.toRelativePath(file);
+        gameState.setMapImagePath(mapPath);
+        mapCanvas.loadMap(mapPath);
         refreshPlayerView();
         setStatus("Map loaded: " + file.getName());
     }
