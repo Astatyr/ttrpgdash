@@ -1,22 +1,26 @@
-package ttrpgdash.model;
+package ttrpgdash.scene;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import ttrpgdash.entity.CharacterEntity;
+import ttrpgdash.entity.Entity;
+import ttrpgdash.entity.PlayerEntity;
+import ttrpgdash.music.MusicTrack;
 import ttrpgdash.util.JsonStateManager;
 
 /**
  * Single source of truth for the entire session.
  *
- * All changes to entities, map config, or positions go through GameState.
+ * All changes to entities, map config, or positions go through sceneState.
  * After every mutation, call save() — or use the mutating helpers below
  * which call it automatically.
  *
- * GameState is loaded once at startup by JsonStateManager and kept in memory.
+ * SceneState is loaded once at startup by JsonStateManager and kept in memory.
  * The UI reads from and writes to this object; it never touches state.json directly.
  */
-public class GameState {
+public class SceneState {
 
     /** Absolute path to the currently loaded map image. Null = no map loaded. */
     private String mapImagePath;
@@ -44,9 +48,9 @@ public class GameState {
     private transient String savePath = JsonStateManager.DEFAULT_STATE_FILE;
 
     /**
-     * Creates a fresh GameState with default values.
+     * Creates a fresh SceneState with default values.
      */
-    public GameState() {
+    public SceneState() {
         this.mapImagePath = null;
         this.mapWidthInFeet = 100.0;
         this.players = new ArrayList<>();
@@ -134,7 +138,7 @@ public class GameState {
     }
 
     /**
-     * Notifies GameState that an entity's data changed (position, status, etc.)
+     * Notifies SceneState that an entity's data changed (position, status, etc.)
      * so it can persist to disk. Call this after mutating any entity field directly.
      */
     public void entityChanged() {
@@ -186,7 +190,7 @@ public class GameState {
     }
 
     /**
-     * Configures the file path this GameState saves to.
+     * Configures the file path this SceneState saves to.
      * Set by SceneStateManager after loading a scene so saves go to the right file.
      */
     public void setSavePath(String path) {

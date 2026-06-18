@@ -12,8 +12,8 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
-import ttrpgdash.model.Entity;
-import ttrpgdash.model.StatusEffect;
+import ttrpgdash.entity.Entity;
+import ttrpgdash.entity.StatusEffect;
 import ttrpgdash.util.FileHelper;
 
 /**
@@ -75,14 +75,6 @@ public final class Token {
         avatarImage = FileHelper.loadImage(entity.getAvatarPath());
     }
 
-    /**
-     * Draws this token onto the given GraphicsContext.
-     * Call order matters — TokenLayer draws mounts first, then riders.
-     */
-    /**
-     * Draws this token onto the given GraphicsContext.
-     * Pass {@code showName = false} to suppress the namebox (cinematic mode).
-     */
     /**
      * Draws this token onto the given GraphicsContext.
      * Pass {@code false} to suppress nameboxes or status icons (cinematic mode).

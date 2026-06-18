@@ -1,4 +1,4 @@
-package ttrpgdash;
+package ttrpgdash.player;
 
 import java.io.File;
 
@@ -13,9 +13,9 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
-import ttrpgdash.model.GameState;
-import ttrpgdash.model.PlayerEntity;
-import ttrpgdash.model.StatusEffect;
+import ttrpgdash.entity.PlayerEntity;
+import ttrpgdash.entity.StatusEffect;
+import ttrpgdash.scene.SceneState;
 import ttrpgdash.util.FileHelper;
 
 /**
@@ -28,13 +28,13 @@ public final class PlayerBar extends HBox {
 
     private static final double DEFAULT_HEIGHT = 160;
 
-    private final GameState gameState;
+    private final SceneState sceneState;
 
     /**
      * Creates the player bar bound to the given game state.
      */
-    public PlayerBar(GameState gameState) {
-        this.gameState = gameState;
+    public PlayerBar(SceneState sceneState) {
+        this.sceneState = sceneState;
         applyBarBackground();
         setAlignment(Pos.CENTER);
         refresh();
@@ -47,13 +47,13 @@ public final class PlayerBar extends HBox {
     }
 
     /**
-     * Rebuilds the bar from the current player list in GameState.
+     * Rebuilds the bar from the current player list in sceneState.
      * Call this whenever players are added, removed, or their status changes.
      */
     public void refresh() {
         getChildren().clear();
         addSpacer();
-        for (PlayerEntity player : gameState.getPlayers()) {
+        for (PlayerEntity player : sceneState.getPlayers()) {
             getChildren().add(buildCard(player));
             addSpacer();
         }

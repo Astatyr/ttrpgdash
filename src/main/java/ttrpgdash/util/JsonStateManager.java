@@ -13,11 +13,11 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 
-import ttrpgdash.model.CharacterEntity;
-import ttrpgdash.model.Entity;
-import ttrpgdash.model.GameState;
-import ttrpgdash.model.MusicTrack;
-import ttrpgdash.model.PlayerEntity;
+import ttrpgdash.entity.CharacterEntity;
+import ttrpgdash.entity.Entity;
+import ttrpgdash.entity.PlayerEntity;
+import ttrpgdash.music.MusicTrack;
+import ttrpgdash.scene.SceneState;
 
 /**
  * Handles reading and writing of data/state.json.
@@ -27,8 +27,8 @@ import ttrpgdash.model.PlayerEntity;
  * but need to be instantiated as the correct subclass on load).
  *
  * Usage:
- *   GameState state = JsonStateManager.load();   // on startup
- *   JsonStateManager.save(state);                // called automatically by GameState mutators
+ *   SceneState state = JsonStateManager.load();   // on startup
+ *   JsonStateManager.save(state);                // called automatically by SceneState mutators
  */
 public class JsonStateManager {
 
@@ -42,17 +42,17 @@ public class JsonStateManager {
             .create();
 
     /**
-     * Serialises the given GameState to the default data/state.json path.
+     * Serialises the given SceneState to the default data/state.json path.
      */
-    public static void save(GameState state) {
+    public static void save(SceneState state) {
         save(state, STATE_FILE);
     }
 
     /**
-     * Serialises the given GameState to the specified file path.
+     * Serialises the given SceneState to the specified file path.
      * Creates parent directories if they do not exist.
      */
-    public static void save(GameState state, String filePath) {
+    public static void save(SceneState state, String filePath) {
         try {
             Path path = Paths.get(filePath);
             Files.createDirectories(path.getParent());
@@ -87,28 +87,28 @@ public class JsonStateManager {
     }
 
     /**
-     * Deserialises GameState from data/state.json, or returns a fresh state if missing.
+     * Deserialises SceneState from data/state.json, or returns a fresh state if missing.
      */
-    public static GameState load() {
+    public static SceneState load() {
         return load(STATE_FILE);
     }
 
     /**
-     * Deserialises GameState from the given file path, or returns a fresh state if missing.
+     * Deserialises SceneState from the given file path, or returns a fresh state if missing.
      */
-    public static GameState load(String filePath) {
+    public static SceneState load(String filePath) {
         Path path = Paths.get(filePath);
 
         if (!Files.exists(path)) {
             System.out.println("[JsonStateManager] No file found at " + filePath + " — starting fresh.");
-            return new GameState();
+            return new SceneState();
         }
 
         try {
             String json = Files.readString(path);
             JsonObject root = JsonParser.parseString(json).getAsJsonObject();
 
-            GameState state = new GameState();
+            SceneState state = new SceneState();
 
             setFieldDirectly(state, root);
 
@@ -145,24 +145,24 @@ public class JsonStateManager {
 
         } catch (IOException | JsonParseException e) {
             System.err.println("[JsonStateManager] Failed to load state: " + e.getMessage());
-            return new GameState();
+            return new SceneState();
         }
     }
 
     /**
-     * Sets mapImagePath and mapWidthInFeet directly on a fresh GameState
+     * Sets mapImagePath and mapWidthInFeet directly on a fresh SceneState
      * during load — avoids triggering save() before the state is fully built.
      */
-    private static void setFieldDirectly(GameState state, JsonObject root) {
+    private static void setFieldDirectly(SceneState state, JsonObject root) {
         try {
-            var pathField = GameState.class.getDeclaredField("mapImagePath");
+            var pathField = SceneState.class.getDeclaredField("mapImagePath");
             pathField.setAccessible(true);
             if (root.has("mapImagePath") && !root.get("mapImagePath").isJsonNull()) {
                 pathField.set(state,
                         FileHelper.normalizeToRelative(root.get("mapImagePath").getAsString()));
             }
 
-            var feetField = GameState.class.getDeclaredField("mapWidthInFeet");
+            var feetField = SceneState.class.getDeclaredField("mapWidthInFeet");
             feetField.setAccessible(true);
             if (root.has("mapWidthInFeet")) {
                 feetField.set(state, root.get("mapWidthInFeet").getAsDouble());

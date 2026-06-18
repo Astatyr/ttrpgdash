@@ -1,4 +1,4 @@
-package ttrpgdash.util;
+package ttrpgdash.scene;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -11,16 +11,15 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-import ttrpgdash.model.GameState;
-import ttrpgdash.model.SceneEntry;
-import ttrpgdash.model.SceneManager;
+import ttrpgdash.util.JsonStateManager;
+
 
 /**
  * Handles persistence for the scene system.
  *
  * Layout:
  *   data/scenes.json        — master list (scene names, order, active id)
- *   data/scenes/{id}.json   — full GameState + music tracks per scene
+ *   data/scenes/{id}.json   — full SceneState + music tracks per scene
  */
 public class SceneStateManager {
 
@@ -76,20 +75,20 @@ public class SceneStateManager {
     }
 
     /**
-     * Loads the GameState for the given scene id and sets its save path.
+     * Loads the SceneState for the given scene id and sets its save path.
      */
-    public static GameState loadScene(String sceneId) {
+    public static SceneState loadScene(String sceneId) {
         String path = scenePath(sceneId);
-        GameState state = JsonStateManager.load(path);
+        SceneState state = JsonStateManager.load(path);
         state.setSavePath(path);
         return state;
     }
 
     /**
-     * Creates a fresh GameState for a new scene and configures its save path.
+     * Creates a fresh SceneState for a new scene and configures its save path.
      */
-    public static GameState createNewScene(String sceneId) {
-        GameState state = new GameState();
+    public static SceneState createNewScene(String sceneId) {
+        SceneState state = new SceneState();
         state.setSavePath(scenePath(sceneId));
         return state;
     }
@@ -109,9 +108,9 @@ public class SceneStateManager {
         manager.setActiveSceneId(sceneId);
 
         // Migrate existing state.json if present, otherwise start fresh
-        GameState state = Files.exists(Paths.get(JsonStateManager.DEFAULT_STATE_FILE))
+        SceneState state = Files.exists(Paths.get(JsonStateManager.DEFAULT_STATE_FILE))
                 ? JsonStateManager.load(JsonStateManager.DEFAULT_STATE_FILE)
-                : new GameState();
+                : new SceneState();
         state.setSavePath(scenePath(sceneId));
         JsonStateManager.save(state, scenePath(sceneId));
 

@@ -1,4 +1,4 @@
-package ttrpgdash.model;
+package ttrpgdash.music;
 
 /**
  * Represents a single audio track belonging to a scene.

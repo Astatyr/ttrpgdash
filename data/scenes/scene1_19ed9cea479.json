@@ -82,5 +82,13 @@
       "entityType": "character"
     }
   ],
-  "musicTracks": []
+  "musicTracks": [
+    {
+      "id": "expeditionerjoklumakardimensionalescape_19ed9d5e01c",
+      "name": "Expeditioner Joklumakar - Dimensional Escape",
+      "filePath": "assets/music/Chapter 5/Expeditioner Joklumakar - Dimensional Escape.wav",
+      "volume": 0.09917355371900828,
+      "loop": false
+    }
+  ]
 }

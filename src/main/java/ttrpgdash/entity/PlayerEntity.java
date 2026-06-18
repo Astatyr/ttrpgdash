@@ -1,4 +1,4 @@
-package ttrpgdash.model;
+package ttrpgdash.entity;
 
 /**
  * Represents a Player Character (PC).

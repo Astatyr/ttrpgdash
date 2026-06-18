@@ -1,4 +1,4 @@
-package ttrpgdash.sidebar;
+package ttrpgdash.entity;
 
 import java.io.File;
 import java.util.HashSet;
@@ -16,10 +16,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import ttrpgdash.model.CharacterEntity;
-import ttrpgdash.model.Entity;
-import ttrpgdash.model.GameState;
-import ttrpgdash.model.PlayerEntity;
+import ttrpgdash.scene.SceneState;
 import ttrpgdash.util.FileHelper;
 
 /**
@@ -37,7 +34,7 @@ import ttrpgdash.util.FileHelper;
  */
 public class SidebarPanel extends VBox {
 
-    private final GameState gameState;
+    private final SceneState sceneState;
     private Stage ownerStage;
 
     private Consumer<Entity> onPlaceEntity;
@@ -52,8 +49,8 @@ public class SidebarPanel extends VBox {
     /**
      * Creates the sidebar panel bound to the given game state.
      */
-    public SidebarPanel(GameState gameState) {
-        this.gameState = gameState;
+    public SidebarPanel(SceneState sceneState) {
+        this.sceneState = sceneState;
         buildUI();
     }
 
@@ -113,17 +110,17 @@ public class SidebarPanel extends VBox {
     }
 
     /**
-     * Rebuilds all entity cards from the current GameState.
+     * Rebuilds all entity cards from the current sceneState.
      * Call this after adding, removing, or modifying entities.
      */
     public void refresh() {
         playersList.getChildren().clear();
-        for (PlayerEntity p : gameState.getPlayers()) {
+        for (PlayerEntity p : sceneState.getPlayers()) {
             playersList.getChildren().add(makeCard(p));
         }
 
         charactersList.getChildren().clear();
-        for (CharacterEntity c : gameState.getCharacters()) {
+        for (CharacterEntity c : sceneState.getCharacters()) {
             charactersList.getChildren().add(makeCard(c));
         }
     }
@@ -150,12 +147,12 @@ public class SidebarPanel extends VBox {
         });
 
         card.setOnDelete(e -> {
-            // Remove from GameState
+            // Remove from SceneState
             if (e instanceof PlayerEntity) {
-                gameState.removePlayer(e.getId());
+                sceneState.removePlayer(e.getId());
             }
             if (e instanceof CharacterEntity) {
-                gameState.removeCharacter(e.getId());
+                sceneState.removeCharacter(e.getId());
             }
             refresh();
             if (onEntitiesChanged != null) {
@@ -172,7 +169,7 @@ public class SidebarPanel extends VBox {
             return;
         }
 
-        String name = assignDisplayName(folder.getName(), gameState.getPlayers());
+        String name = assignDisplayName(folder.getName(), sceneState.getPlayers());
         String id = FileHelper.generateId(name);
 
         PlayerEntity player = new PlayerEntity(id, name, 5.0);
@@ -182,7 +179,7 @@ public class SidebarPanel extends VBox {
         double size = promptForSize(name, 5.0);
         player.setSizeInFeet(size);
 
-        gameState.addPlayer(player);
+        sceneState.addPlayer(player);
         refresh();
         if (onEntitiesChanged != null) {
             onEntitiesChanged.run();
@@ -195,7 +192,7 @@ public class SidebarPanel extends VBox {
             return;
         }
 
-        String name = assignDisplayName(folder.getName(), gameState.getCharacters());
+        String name = assignDisplayName(folder.getName(), sceneState.getCharacters());
         String id = FileHelper.generateId(name);
 
         CharacterEntity character = new CharacterEntity(id, name, 5.0);
@@ -205,7 +202,7 @@ public class SidebarPanel extends VBox {
         double size = promptForSize(name, 5.0);
         character.setSizeInFeet(size);
 
-        gameState.addCharacter(character);
+        sceneState.addCharacter(character);
         refresh();
         if (onEntitiesChanged != null) {
             onEntitiesChanged.run();

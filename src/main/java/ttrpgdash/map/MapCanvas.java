@@ -11,8 +11,8 @@ import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
-import ttrpgdash.model.Entity;
-import ttrpgdash.model.GameState;
+import ttrpgdash.entity.Entity;
+import ttrpgdash.scene.SceneState;
 import ttrpgdash.util.FileHelper;
 
 /**
@@ -64,7 +64,7 @@ public class MapCanvas extends Pane {
 
     private boolean panMoved = false;
 
-    private final GameState gameState;
+    private final SceneState sceneState;
 
     /** When true, token interaction (drag, placement, context menu) is disabled. */
     private final boolean readOnly;
@@ -78,8 +78,8 @@ public class MapCanvas extends Pane {
     /**
      * Creates an editable map canvas bound to the given game state.
      */
-    public MapCanvas(GameState gameState) {
-        this(gameState, false);
+    public MapCanvas(SceneState sceneState) {
+        this(sceneState, false);
     }
 
     /**
@@ -87,10 +87,10 @@ public class MapCanvas extends Pane {
      * Pass {@code readOnly = true} for a display-only view that allows pan/zoom
      * but disables token drag, placement, and the context menu.
      */
-    public MapCanvas(GameState gameState, boolean readOnly) {
-        this.gameState = gameState;
+    public MapCanvas(SceneState sceneState, boolean readOnly) {
+        this.sceneState = sceneState;
         this.readOnly = readOnly;
-        this.tokenLayer = new TokenLayer(gameState);
+        this.tokenLayer = new TokenLayer(sceneState);
 
         // Canvas fills the pane
         canvas = new Canvas();
@@ -119,10 +119,10 @@ public class MapCanvas extends Pane {
     }
 
     /**
-     * Reloads the map from the path stored in GameState (called on startup).
+     * Reloads the map from the path stored in SceneState (called on startup).
      */
     public void reloadFromState() {
-        String path = gameState.getMapImagePath();
+        String path = sceneState.getMapImagePath();
         if (path != null) {
             loadMap(path);
         } else {

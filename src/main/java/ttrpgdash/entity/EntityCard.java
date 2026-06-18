@@ -1,4 +1,4 @@
-package ttrpgdash.sidebar;
+package ttrpgdash.entity;
 
 import java.util.function.Consumer;
 
@@ -14,7 +14,6 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
-import ttrpgdash.model.Entity;
 import ttrpgdash.util.FileHelper;
 
 /**

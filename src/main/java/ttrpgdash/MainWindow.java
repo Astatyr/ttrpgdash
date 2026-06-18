@@ -24,17 +24,19 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
-import ttrpgdash.audio.MusicController;
+import ttrpgdash.entity.Entity;
+import ttrpgdash.entity.SidebarPanel;
+import ttrpgdash.entity.StatusEffect;
 import ttrpgdash.map.MapCanvas;
 import ttrpgdash.map.Token;
-import ttrpgdash.model.Entity;
-import ttrpgdash.model.GameState;
-import ttrpgdash.model.SceneEntry;
-import ttrpgdash.model.SceneManager;
-import ttrpgdash.model.StatusEffect;
-import ttrpgdash.sidebar.SidebarPanel;
+import ttrpgdash.music.MusicController;
+import ttrpgdash.player.PlayerView;
+import ttrpgdash.scene.SceneEntry;
+import ttrpgdash.scene.SceneManager;
+import ttrpgdash.scene.ScenePanel;
+import ttrpgdash.scene.SceneState;
+import ttrpgdash.scene.SceneStateManager;
 import ttrpgdash.util.FileHelper;
-import ttrpgdash.util.SceneStateManager;
 
 /**
  * The DM's main window. Assembles the menu bar, sidebar, map canvas,
@@ -46,7 +48,7 @@ public class MainWindow {
     private final MusicController musicController = new MusicController();
     private Stage stage;
 
-    private GameState gameState;
+    private SceneState sceneState;
     private MapCanvas mapCanvas;
     private SidebarPanel sidebarPanel;
     private ScenePanel scenePanel;
@@ -61,7 +63,7 @@ public class MainWindow {
      */
     public MainWindow(SceneManager sceneManager) {
         this.sceneManager = sceneManager;
-        this.gameState = SceneStateManager.loadScene(sceneManager.getActiveSceneId());
+        this.sceneState = SceneStateManager.loadScene(sceneManager.getActiveSceneId());
         buildComponents();
     }
 
@@ -118,9 +120,9 @@ public class MainWindow {
     }
 
     private void buildComponents() {
-        mapCanvas = new MapCanvas(gameState);
-        sidebarPanel = new SidebarPanel(gameState);
-        scenePanel = new ScenePanel(sceneManager, musicController, gameState);
+        mapCanvas = new MapCanvas(sceneState);
+        sidebarPanel = new SidebarPanel(sceneState);
+        scenePanel = new ScenePanel(sceneManager, musicController, sceneState);
         wireScenePanel();
     }
 
@@ -156,7 +158,7 @@ public class MainWindow {
             sceneManager.getById(id).ifPresent(e -> e.setName(name));
             SceneStateManager.saveMaster(sceneManager);
             scenePanel.refreshSceneList();
-            scenePanel.refreshMusic(gameState);
+            scenePanel.refreshMusic(sceneState);
         });
         scenePanel.setOnSceneDelete(this::deleteScene);
     }
@@ -166,15 +168,15 @@ public class MainWindow {
             return;
         }
 
-        gameState.save();
+        sceneState.save();
         musicController.stopAll();
 
-        gameState = SceneStateManager.loadScene(sceneId);
+        sceneState = SceneStateManager.loadScene(sceneId);
         sceneManager.setActiveSceneId(sceneId);
         SceneStateManager.saveMaster(sceneManager);
 
-        mapCanvas = new MapCanvas(gameState);
-        sidebarPanel = new SidebarPanel(gameState);
+        mapCanvas = new MapCanvas(sceneState);
+        sidebarPanel = new SidebarPanel(sceneState);
         wireSidebar();
         wireMapCanvas();
 
@@ -186,10 +188,10 @@ public class MainWindow {
         sidebarPanel.refresh();
 
         scenePanel.refreshSceneList();
-        scenePanel.refreshMusic(gameState);
+        scenePanel.refreshMusic(sceneState);
 
         if (playerView != null && playerView.isShowing()) {
-            GameState newGs = gameState;
+            SceneState newGs = sceneState;
             playerView.fadeTransitionTo(() -> playerView.refreshScene(newGs));
         }
 
@@ -201,7 +203,7 @@ public class MainWindow {
         int order = sceneManager.getScenes().size();
         SceneEntry entry = new SceneEntry(id, "New Scene", order);
         sceneManager.addScene(entry);
-        GameState newGs = SceneStateManager.createNewScene(id);
+        SceneState newGs = SceneStateManager.createNewScene(id);
         newGs.save();
         SceneStateManager.saveMaster(sceneManager);
         switchToScene(id);
@@ -244,7 +246,7 @@ public class MainWindow {
 
         MenuItem clearMap = new MenuItem("Clear Map…");
         clearMap.setOnAction(e -> {
-            gameState.clearMapOnly();
+            sceneState.clearMapOnly();
             mapCanvas.reloadFromState();
             refreshPlayerView();
             setStatus("Map cleared.");
@@ -272,7 +274,7 @@ public class MainWindow {
 
         MenuItem clearPositions = new MenuItem("Clear Token Positions");
         clearPositions.setOnAction(e -> {
-            gameState.clearMapPositions();
+            sceneState.clearMapPositions();
             mapCanvas.syncTokens();
             refreshPlayerView();
             setStatus("Token positions cleared.");
@@ -286,7 +288,7 @@ public class MainWindow {
             confirm.setTitle("Clear All");
             confirm.showAndWait().ifPresent(btn -> {
                 if (btn == ButtonType.YES) {
-                    gameState.clearAll();
+                    sceneState.clearAll();
                     mapCanvas.reloadFromState();
                     sidebarPanel.refresh();
                     refreshPlayerView();
@@ -303,7 +305,7 @@ public class MainWindow {
             if (playerView == null) {
                 playerView = new PlayerView(stage);
             }
-            playerView.show(gameState);
+            playerView.show(sceneState);
         });
         viewMenu.getItems().add(openPlayerView);
 
@@ -317,7 +319,7 @@ public class MainWindow {
             return;
         }
         String mapPath = FileHelper.toRelativePath(file);
-        gameState.setMapImagePath(mapPath);
+        sceneState.setMapImagePath(mapPath);
         mapCanvas.loadMap(mapPath);
         refreshPlayerView();
         setStatus("Map loaded: " + file.getName());
@@ -325,14 +327,14 @@ public class MainWindow {
 
     private void promptMapWidth() {
         TextInputDialog dialog = new TextInputDialog(
-                String.valueOf((int) gameState.getMapWidthInFeet()));
+                String.valueOf((int) sceneState.getMapWidthInFeet()));
         dialog.setTitle("Map Width");
         dialog.setHeaderText("How wide is the map in feet?");
         dialog.setContentText("Width in feet:");
         dialog.showAndWait().ifPresent(val -> {
             try {
                 double feet = Double.parseDouble(val);
-                gameState.setMapWidthInFeet(feet);
+                sceneState.setMapWidthInFeet(feet);
                 mapCanvas.onMapWidthChanged();
                 setStatus("Map width set to " + feet + " ft.");
             } catch (NumberFormatException ex) {
@@ -359,7 +361,7 @@ public class MainWindow {
                 } else {
                     token.getEntity().addStatusEffect(s);
                 }
-                gameState.entityChanged();
+                sceneState.entityChanged();
                 mapCanvas.repaint();
                 refreshPlayerView();
             });

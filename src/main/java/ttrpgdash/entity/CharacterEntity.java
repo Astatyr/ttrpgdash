@@ -1,4 +1,4 @@
-package ttrpgdash.model;
+package ttrpgdash.entity;
 
 /**
  * Represents any non-player entity: NPCs, enemies, creatures, bosses,

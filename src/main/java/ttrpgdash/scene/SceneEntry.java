@@ -1,4 +1,4 @@
-package ttrpgdash.model;
+package ttrpgdash.scene;
 
 /**
  * Lightweight scene metadata stored in the master scenes.json.

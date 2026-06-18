@@ -2,8 +2,8 @@ package ttrpgdash;
 
 import javafx.application.Application;
 import javafx.stage.Stage;
-import ttrpgdash.model.SceneManager;
-import ttrpgdash.util.SceneStateManager;
+import ttrpgdash.scene.SceneManager;
+import ttrpgdash.scene.SceneStateManager;
 
 /**
  * Application entry point.

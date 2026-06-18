@@ -1,4 +1,4 @@
-package ttrpgdash.audio;
+package ttrpgdash.music;
 
 import java.io.File;
 import java.util.HashMap;
@@ -6,7 +6,6 @@ import java.util.Map;
 
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
-import ttrpgdash.model.MusicTrack;
 import ttrpgdash.util.FileHelper;
 
 /**
@@ -77,6 +76,9 @@ public final class MusicController {
         }
     }
 
+    /**
+     * Returns true if the given track is currently playing.
+     */
     public boolean isPlaying(String trackId) {
         MediaPlayer player = players.get(trackId);
         return player != null && player.getStatus() == MediaPlayer.Status.PLAYING;

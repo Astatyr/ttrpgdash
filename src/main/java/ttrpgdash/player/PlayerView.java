@@ -1,4 +1,4 @@
-package ttrpgdash;
+package ttrpgdash.player;
 
 import javafx.animation.FadeTransition;
 import javafx.scene.Scene;
@@ -9,7 +9,7 @@ import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import ttrpgdash.map.MapCanvas;
-import ttrpgdash.model.GameState;
+import ttrpgdash.scene.SceneState;
 
 /**
  * The player-facing window showing a read-only map and a player avatar bar.
@@ -32,7 +32,7 @@ public class PlayerView {
 
     /**
      * Creates and configures the player view window without showing it.
-     * Call {@link #show(GameState)} to display it.
+     * Call {@link #show(sceneState)} to display it.
      */
     public PlayerView(Stage ownerStage) {
         content = new BorderPane();
@@ -60,8 +60,8 @@ public class PlayerView {
     /**
      * Shows the window and loads the given game state into the canvas and player bar.
      */
-    public void show(GameState gameState) {
-        buildContent(gameState);
+    public void show(SceneState sceneState) {
+        buildContent(sceneState);
         stage.show();
         bindBarHeight();
         mapCanvas.reloadFromState();
@@ -69,7 +69,7 @@ public class PlayerView {
     }
 
     /**
-     * Syncs tokens and the player bar to the latest GameState.
+     * Syncs tokens and the player bar to the latest sceneState.
      * No-op if the window is not currently visible.
      */
     public void refresh() {
@@ -98,10 +98,10 @@ public class PlayerView {
     }
 
     /**
-     * Rebuilds the canvas and player bar for a new scene's GameState.
+     * Rebuilds the canvas and player bar for a new scene's sceneState.
      * Intended to be called inside {@link #fadeTransitionTo(Runnable)}.
      */
-    public void refreshScene(GameState newGameState) {
+    public void refreshScene(SceneState newGameState) {
         buildContent(newGameState);
         bindBarHeight();
         mapCanvas.reloadFromState();
@@ -112,9 +112,9 @@ public class PlayerView {
         return stage.isShowing();
     }
 
-    private void buildContent(GameState gameState) {
-        mapCanvas = new MapCanvas(gameState, true);
-        playerBar = new PlayerBar(gameState);
+    private void buildContent(SceneState sceneState) {
+        mapCanvas = new MapCanvas(sceneState, true);
+        playerBar = new PlayerBar(sceneState);
         content.setCenter(mapCanvas);
         content.setBottom(playerBar);
     }

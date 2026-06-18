@@ -1,4 +1,4 @@
-package ttrpgdash.model;
+package ttrpgdash.entity;
 
 import java.util.List;
 import java.util.Set;

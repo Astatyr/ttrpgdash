@@ -7,14 +7,14 @@ import java.util.List;
 import java.util.Map;
 
 import javafx.scene.canvas.GraphicsContext;
-import ttrpgdash.model.Entity;
-import ttrpgdash.model.GameState;
+import ttrpgdash.entity.Entity;
+import ttrpgdash.scene.SceneState;
 
 /**
  * Manages the collection of Token objects drawn on the map canvas.
  *
  * Responsibilities:
- *   - Keeping a Token for every on-map Entity in GameState
+ *   - Keeping a Token for every on-map Entity in SceneState
  *   - Hit-testing clicks to find which token was clicked
  *   - Handling drag moves (updating token position)
  *   - Collision detection on drop (block placement or mount)
@@ -29,8 +29,8 @@ public class TokenLayer {
     /** All currently visible tokens, keyed by entity ID. */
     private final Map<String, Token> tokens = new LinkedHashMap<>();
 
-    /** GameState reference — read for entity data, written for position persistence. */
-    private final GameState gameState;
+    /** SceneState reference — read for entity data, written for position persistence. */
+    private final SceneState sceneState;
 
     /** Pixel width of the map image as currently rendered on canvas. */
     private double mapPixelWidth = 1;
@@ -51,8 +51,8 @@ public class TokenLayer {
 
     private Entity pendingEntity = null;
 
-    public TokenLayer(GameState gameState) {
-        this.gameState = gameState;
+    public TokenLayer(SceneState sceneState) {
+        this.sceneState = sceneState;
     }
 
     /**
@@ -80,13 +80,13 @@ public class TokenLayer {
     }
 
     /**
-     * Rebuilds the token map from GameState.
+     * Rebuilds the token map from sceneState.
      * Call this after adding/removing entities in the sidebar,
      * or after loading a saved state.
      */
     public void syncFromGameState() {
         tokens.clear();
-        for (Entity e : gameState.getAllEntities()) {
+        for (Entity e : sceneState.getAllEntities()) {
             if (e.isOnMap()) {
                 double cx = mapOffsetX + e.getXFraction() * mapPixelWidth;
                 double cy = mapOffsetY + e.getYFraction() * mapPixelHeight;
@@ -118,7 +118,7 @@ public class TokenLayer {
      *
      * If an entity is pending placement:
      *   - Check for overlap with existing tokens
-     *   - If clear: place the token, update GameState
+     *   - If clear: place the token, update SceneState
      *   - If overlapping: cancel placement (return false)
      *
      * If no pending entity:
@@ -181,7 +181,7 @@ public class TokenLayer {
         draggedToken.setCx(x - dragOffsetX);
         draggedToken.setCy(y - dragOffsetY);
         // Update entity fractions in memory so the player view can read the live position.
-        // Does not call gameState.entityChanged() — no disk write until drop.
+        // Does not call sceneState.entityChanged() — no disk write until drop.
         persistTokenPosition(draggedToken);
     }
 
@@ -191,7 +191,7 @@ public class TokenLayer {
      * Checks for overlap with other tokens:
      *   - If overlapping a single other token: mount on it
      *   - If overlapping multiple tokens: reject, snap back to last valid position
-     *   - If clear: update GameState position
+     *   - If clear: update SceneState position
      */
     public void handleDragEnd(double x, double y) {
         if (draggedToken == null) {
@@ -207,7 +207,7 @@ public class TokenLayer {
         List<Token> overlapping = getOverlappingTokens(draggedToken);
 
         if (overlapping.isEmpty()) {
-            // Free space — update entity position in GameState
+            // Free space — update entity position in SceneState
             persistTokenPosition(draggedToken);
             // Unmount if was mounted
             draggedToken.getEntity().setMountedOnId(null);
@@ -229,7 +229,7 @@ public class TokenLayer {
             draggedToken.setCy(mapOffsetY + dragOriginalYFraction * mapPixelHeight);
         }
 
-        gameState.entityChanged();
+        sceneState.entityChanged();
         draggedToken = null;
     }
 
@@ -251,21 +251,21 @@ public class TokenLayer {
         entity.setYFraction((y - mapOffsetY) / mapPixelHeight);
         tokens.put(entity.getId(), candidate);
         pendingEntity = null;
-        gameState.entityChanged();
+        sceneState.entityChanged();
         return true;
     }
 
     /**
      * Removes the token for the given entity from the map
-     * (does NOT remove the entity from GameState/sidebar).
+     * (does NOT remove the entity from SceneState/sidebar).
      */
     public void removeToken(String entityId) {
         tokens.remove(entityId);
-        gameState.findById(entityId).ifPresent(e -> {
+        sceneState.findById(entityId).ifPresent(e -> {
             e.setOnMap(false);
             e.setMountedOnId(null);
         });
-        gameState.entityChanged();
+        sceneState.entityChanged();
     }
 
     private void selectToken(Token t) {
@@ -291,10 +291,10 @@ public class TokenLayer {
      * pixels = (feet / mapWidthInFeet) * mapPixelWidth
      */
     private double feetToPixels(double feet) {
-        if (gameState.getMapWidthInFeet() <= 0 || mapPixelWidth <= 0) {
+        if (sceneState.getMapWidthInFeet() <= 0 || mapPixelWidth <= 0) {
             return 30;
         }
-        return (feet / gameState.getMapWidthInFeet()) * mapPixelWidth;
+        return (feet / sceneState.getMapWidthInFeet()) * mapPixelWidth;
     }
 
     /** Returns all tokens that overlap the given token (excluding itself). */
@@ -322,11 +322,6 @@ public class TokenLayer {
         e.setYFraction((token.getCy() - mapOffsetY) / mapPixelHeight);
     }
 
-    /**
-     * Draws all tokens onto the given GraphicsContext.
-     * Z-order: mounts drawn first, then riders on top.
-     * Pass {@code showNames = false} to suppress nameboxes.
-     */
     /**
      * Draws all tokens onto the given GraphicsContext.
      * Z-order: mounts drawn first, then riders on top.

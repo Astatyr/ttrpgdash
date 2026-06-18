@@ -1,4 +1,4 @@
-package ttrpgdash.model;
+package ttrpgdash.scene;
 
 import java.util.ArrayList;
 import java.util.List;

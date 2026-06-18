@@ -5,6 +5,11 @@
       "id": "scene1_19ed9cea479",
       "name": "Scene 1",
       "order": 0
+    },
+    {
+      "id": "scene_19ed9d2e53d",
+      "name": "New Scene",
+      "order": 1
     }
   ]
 }
