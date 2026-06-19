@@ -377,6 +377,11 @@ public final class Token {
 
     public void setRadius(double r) {
         this.radius = r;
+        // Invalidate the namebox cache so it is recomputed at the new scale.
+        // The line-split result is zoom-independent (all dimensions scale linearly),
+        // but without this, a cache built at a near-zero radius (before the map
+        // loads) would produce a font hundreds of pixels tall once the map appears.
+        this.cachedLines = null;
     }
 
     public boolean isSelected() {

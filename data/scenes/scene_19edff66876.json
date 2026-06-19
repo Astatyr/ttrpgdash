@@ -1,0 +1,19 @@
+{
+  "mapImagePath": "assets/maps/Tree.png",
+  "mapWidthInFeet": 100.0,
+  "players": [
+    {
+      "id": "birdie_19edff68672",
+      "name": "Birdie",
+      "avatarPath": "assets/characters/Birdie/Avatar.png",
+      "sizeInFeet": 5.0,
+      "xFraction": 0.48499999999999993,
+      "yFraction": 0.4570082304526748,
+      "onMap": true,
+      "statusEffects": [],
+      "entityType": "player"
+    }
+  ],
+  "characters": [],
+  "musicTracks": []
+}

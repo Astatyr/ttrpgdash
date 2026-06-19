@@ -31,9 +31,14 @@ public final class MusicPanel extends VBox {
     private final MusicController musicController;
     private SceneState sceneState;
     private Stage ownerStage;
+    private Runnable onMusicChanged;
 
     private final Label header = new Label("MUSIC");
     private final VBox trackListBox = new VBox();
+
+    public void setOnMusicChanged(Runnable handler) {
+        this.onMusicChanged = handler;
+    }
 
     /**
      * Creates the music panel bound to the given controller and initial scene state.
@@ -100,6 +105,7 @@ public final class MusicPanel extends VBox {
 
         ToggleButton loopBtn = new ToggleButton("↺");
         loopBtn.setSelected(track.isLoop());
+        loopBtn.setMinWidth(28);
         loopBtn.setStyle("-fx-background-color: " + (track.isLoop() ? ACCENT : "#333")
                 + "; -fx-text-fill: white; -fx-font-size: 11px;"
                 + "-fx-padding: 2 5 2 5; -fx-cursor: hand;");
@@ -109,14 +115,14 @@ public final class MusicPanel extends VBox {
                     + "; -fx-text-fill: white; -fx-font-size: 11px;"
                     + "-fx-padding: 2 5 2 5; -fx-cursor: hand;");
             musicController.setLoop(track.getId(), track.isLoop());
-            sceneState.entityChanged();
+            if (onMusicChanged != null) { onMusicChanged.run(); }
         });
 
         Button removeBtn = makeSmallBtn("×");
         removeBtn.setOnAction(e -> {
             musicController.stop(track.getId());
             sceneState.getMusicTracks().remove(track);
-            sceneState.entityChanged();
+            if (onMusicChanged != null) { onMusicChanged.run(); }
             refresh(sceneState);
         });
 
@@ -128,7 +134,7 @@ public final class MusicPanel extends VBox {
         volumeSlider.valueProperty().addListener((obs, oldV, newV) -> {
             track.setVolume(newV.doubleValue());
             musicController.setVolume(track.getId(), newV.doubleValue());
-            sceneState.entityChanged();
+            if (onMusicChanged != null) { onMusicChanged.run(); }
         });
 
         Label volLabel = new Label("vol");
@@ -155,14 +161,15 @@ public final class MusicPanel extends VBox {
                 + Long.toHexString(System.currentTimeMillis());
         MusicTrack track = new MusicTrack(id, name, relativePath);
         sceneState.getMusicTracks().add(track);
-        sceneState.entityChanged();
+        if (onMusicChanged != null) { onMusicChanged.run(); }
         refresh(sceneState);
     }
 
     private Button makeSmallBtn(String text) {
         Button btn = new Button(text);
         btn.setStyle("-fx-background-color: transparent; -fx-text-fill: " + TEXT_DIM
-                + "; -fx-font-size: 11px; -fx-cursor: hand; -fx-padding: 2 4 2 4;");
+                + "; -fx-font-size: 11px; -fx-cursor: hand; -fx-padding: 2 6 2 6;");
+        btn.setMinWidth(28);
         return btn;
     }
 }

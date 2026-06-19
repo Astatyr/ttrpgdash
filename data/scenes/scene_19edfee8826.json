@@ -1,0 +1,30 @@
+{
+  "mapImagePath": "assets/maps/Tree.png",
+  "mapWidthInFeet": 100.0,
+  "players": [
+    {
+      "id": "birdie_19edfee9690",
+      "name": "Birdie",
+      "avatarPath": "assets/characters/Birdie/Avatar.png",
+      "sizeInFeet": 5.0,
+      "xFraction": 0.41509394983174863,
+      "yFraction": 0.31425202729631896,
+      "onMap": true,
+      "statusEffects": [],
+      "entityType": "player"
+    },
+    {
+      "id": "birdie2_19edfeec4ef",
+      "name": "Birdie 2",
+      "avatarPath": "assets/characters/Birdie/Avatar.png",
+      "sizeInFeet": 5.0,
+      "xFraction": 0.2954325961922462,
+      "yFraction": 0.3483603498321221,
+      "onMap": true,
+      "statusEffects": [],
+      "entityType": "player"
+    }
+  ],
+  "characters": [],
+  "musicTracks": []
+}

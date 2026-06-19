@@ -315,11 +315,18 @@ public class MapCanvas extends Pane {
     /**
      * Removes the currently selected token from the map.
      */
+    /**
+     * Removes the given token from the map.
+     */
+    public void removeToken(Token token) {
+        tokenLayer.removeToken(token.getEntity().getId());
+        redraw();
+    }
+
     public void removeSelectedToken() {
         Token sel = tokenLayer.getSelectedToken();
         if (sel != null) {
-            tokenLayer.removeToken(sel.getEntity().getId());
-            redraw();
+            removeToken(sel);
         }
     }
 

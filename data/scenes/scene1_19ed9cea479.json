@@ -26,8 +26,8 @@
       "name": "Birdie",
       "avatarPath": "assets/characters/Birdie/Avatar.png",
       "sizeInFeet": 15.0,
-      "xFraction": 0.7872291852805398,
-      "yFraction": 0.22056163397180795,
+      "xFraction": 0.7430733411246955,
+      "yFraction": 0.31421777207239043,
       "onMap": true,
       "statusEffects": [],
       "entityType": "player"
@@ -51,10 +51,12 @@
       "name": "Birdie",
       "avatarPath": "assets/characters/Birdie/Avatar.png",
       "sizeInFeet": 5.0,
-      "xFraction": 0.5347416880148625,
-      "yFraction": 0.28360688360819897,
+      "xFraction": 0.35930735930735924,
+      "yFraction": 0.22503518429444358,
       "onMap": true,
-      "statusEffects": [],
+      "statusEffects": [
+        "poisoned"
+      ],
       "entityType": "character"
     },
     {
@@ -63,10 +65,12 @@
       "name": "Birdie 2",
       "avatarPath": "assets/characters/Birdie/Avatar.png",
       "sizeInFeet": 5.0,
-      "xFraction": 0.6097582970568021,
-      "yFraction": 0.4072682212985517,
+      "xFraction": 0.458008658008658,
+      "yFraction": 0.45437265066894694,
       "onMap": true,
-      "statusEffects": [],
+      "statusEffects": [
+        "poisoned"
+      ],
       "entityType": "character"
     },
     {
@@ -75,8 +79,8 @@
       "name": "an sajcfmwjoraegyuhreiwmedsufhgdndjmswnfgaWDSuilgeudfyfshihk,lhjfus;ckzjhgbspoc;idhvxjbj;cjdkvf",
       "avatarPath": "assets/characters/an sajcfmwjoraegyuhreiwmedsufhgdndjmswnfgaWDSuilgeudfyfshihk,lhjfus;ckzjhgbspoc;idhvxjbj;cjdkvf/Avatar.png",
       "sizeInFeet": 5.0,
-      "xFraction": 0.23330651649235715,
-      "yFraction": 0.5368185294438982,
+      "xFraction": 0.1774891774891775,
+      "yFraction": 0.5492295084887677,
       "onMap": true,
       "statusEffects": [],
       "entityType": "character"
@@ -84,10 +88,17 @@
   ],
   "musicTracks": [
     {
-      "id": "expeditionerjoklumakardimensionalescape_19ed9d5e01c",
+      "id": "loudthunder192165_19edfdc2cb7",
+      "name": "loud-thunder-192165",
+      "filePath": "assets/music/loud-thunder-192165.mp3",
+      "volume": 1.0,
+      "loop": true
+    },
+    {
+      "id": "expeditionerjoklumakardimensionalescape_19edfdc556f",
       "name": "Expeditioner Joklumakar - Dimensional Escape",
       "filePath": "assets/music/Chapter 5/Expeditioner Joklumakar - Dimensional Escape.wav",
-      "volume": 0.09917355371900828,
+      "volume": 1.0,
       "loop": false
     }
   ]

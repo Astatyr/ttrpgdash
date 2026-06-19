@@ -133,6 +133,14 @@ public final class ScenePanel extends VBox {
         musicPanel.refresh(gs);
     }
 
+    /**
+     * Wires a callback that fires whenever a music track is added, removed, or modified.
+     * Delegates to the embedded MusicPanel.
+     */
+    public void setOnMusicChanged(Runnable handler) {
+        musicPanel.setOnMusicChanged(handler);
+    }
+
     private HBox buildSceneRow(SceneEntry entry) {
         boolean active = entry.getId().equals(sceneManager.getActiveSceneId());
 

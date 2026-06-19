@@ -55,6 +55,8 @@ public class EntityCard extends HBox {
         VBox nameBox = new VBox(2);
         Label nameLabel = new Label(entity.getName());
         nameLabel.setStyle("-fx-text-fill: #e0e0e0; -fx-font-size: 13px; -fx-font-weight: bold;");
+        nameLabel.setWrapText(true);
+        nameLabel.setMinWidth(0);
 
         String typeTag = entity.getEntityType().equals("player") ? "PC" : "NPC";
         String typeColor = entity.getEntityType().equals("player") ? "#6fa8dc" : "#e06c75";
@@ -64,12 +66,12 @@ public class EntityCard extends HBox {
         nameBox.getChildren().addAll(nameLabel, typeLabel);
         HBox.setHgrow(nameBox, Priority.ALWAYS);
 
-        Button placeBtn = makeBtn("Place", "#4a90d9", () -> {
+        Button placeBtn = makeBtn("📍", "#4a90d9", () -> {
             if (onPlace != null) {
                 onPlace.run();
             }
         });
-        Button detailsBtn = makeBtn("Details", "#7a6a9e", () -> {
+        Button detailsBtn = makeBtn("📄", "#7a6a9e", () -> {
             if (onDetails != null) {
                 onDetails.accept(entity);
             }
@@ -129,6 +131,7 @@ public class EntityCard extends HBox {
         btn.setStyle("-fx-background-color: " + color + "; -fx-text-fill: white; "
                 + "-fx-font-size: 11px; -fx-padding: 3 7 3 7; -fx-cursor: hand; "
                 + "-fx-background-radius: 4;");
+        btn.setMinWidth(javafx.scene.layout.Region.USE_PREF_SIZE);
         btn.setOnAction(e -> action.run());
         return btn;
     }

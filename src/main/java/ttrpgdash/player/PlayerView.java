@@ -41,6 +41,7 @@ public class PlayerView {
         overlay = new Rectangle();
         overlay.setFill(Color.BLACK);
         overlay.setOpacity(0);
+        overlay.setMouseTransparent(true);
 
         StackPane root = new StackPane(content, overlay);
         overlay.widthProperty().bind(root.widthProperty());

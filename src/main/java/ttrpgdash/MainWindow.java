@@ -1,9 +1,8 @@
 package ttrpgdash;
 
-import java.io.File;
-
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
+import javafx.geometry.Point2D;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
@@ -28,54 +27,68 @@ import ttrpgdash.entity.Entity;
 import ttrpgdash.entity.SidebarPanel;
 import ttrpgdash.entity.StatusEffect;
 import ttrpgdash.map.MapCanvas;
+import ttrpgdash.map.MapController;
 import ttrpgdash.map.Token;
-import ttrpgdash.music.MusicController;
 import ttrpgdash.player.PlayerView;
-import ttrpgdash.scene.SceneEntry;
+import ttrpgdash.scene.SceneController;
 import ttrpgdash.scene.SceneManager;
 import ttrpgdash.scene.ScenePanel;
 import ttrpgdash.scene.SceneState;
-import ttrpgdash.scene.SceneStateManager;
 import ttrpgdash.util.FileHelper;
 
 /**
- * The DM's main window. Assembles the menu bar, sidebar, map canvas,
- * scene panel, and status bar. Manages scene switching and music.
+ * Composition root for the DM window.
+ * Responsible for layout assembly, UI dialogs, and wiring the controllers.
+ * Contains no business logic — all mutations go through SceneController or MapController.
  */
 public class MainWindow {
 
-    private final SceneManager sceneManager;
-    private final MusicController musicController = new MusicController();
     private Stage stage;
-
-    private SceneState sceneState;
-    private MapCanvas mapCanvas;
-    private SidebarPanel sidebarPanel;
-    private ScenePanel scenePanel;
     private SplitPane splitPane;
-
+    private ScenePanel scenePanel;
     private final Label statusLabel = new Label("Ready");
     private PlayerView playerView;
 
+    private final SceneController sceneController;
+    private MapController mapController;
+
     /**
-     * Initialises the window for the given scene manager.
-     * Call {@link #show(Stage)} afterwards to display the window.
+     * Creates the window for the given scene manager.
+     * Call {@link #show(Stage)} to display it.
      */
     public MainWindow(SceneManager sceneManager) {
-        this.sceneManager = sceneManager;
-        this.sceneState = SceneStateManager.loadScene(sceneManager.getActiveSceneId());
-        buildComponents();
+        this.sceneController = new SceneController(sceneManager);
     }
 
     /**
-     * Builds and displays the main window on the given stage.
+     * Assembles the layout, wires all controllers, and shows the stage.
      */
     public void show(Stage stage) {
         this.stage = stage;
 
-        scenePanel.setOwnerStage(stage);
-        wireSidebar();
-        wireMapCanvas();
+        SceneState state = sceneController.getActiveState();
+        MapCanvas mapCanvas = new MapCanvas(state);
+        SidebarPanel sidebarPanel = new SidebarPanel(state);
+
+        mapController = new MapController(stage);
+        mapController.attachScene(state, mapCanvas, sidebarPanel);
+        mapController.setOnStateChanged(this::refreshPlayerView);
+        mapController.setOnTokenRightClick(this::showTokenContextMenu);
+        mapController.setOnStatusMessage(this::setStatus);
+
+        scenePanel = new ScenePanel(sceneController.getSceneManager(),
+                sceneController.getMusicController(), state);
+        sceneController.attachScenePanel(scenePanel);
+        sceneController.setOnSceneChanged(this::onSceneChanged);
+        sceneController.setOnSceneListChanged(() -> scenePanel.refreshSceneList());
+        sceneController.setOnStateChanged(() -> {
+            mapController.getMapCanvas().reloadFromState();
+            mapController.getSidebarPanel().refresh();
+            refreshPlayerView();
+        });
+
+        sidebarPanel.setOwnerStage(stage);
+        sidebarPanel.setOnDetailsEntity(this::showDetailsPopup);
 
         splitPane = new SplitPane();
         splitPane.setOrientation(Orientation.HORIZONTAL);
@@ -111,119 +124,36 @@ public class MainWindow {
         stage.setTitle("TTRPG Dash — DM View");
         stage.setMinWidth(900);
         stage.setMinHeight(500);
-
         stage.show();
 
         mapCanvas.reloadFromState();
         sidebarPanel.refresh();
-        setStatus("Scene: " + activeSceneName());
+        setStatus("Scene: " + sceneController.getActiveSceneName());
     }
 
-    private void buildComponents() {
-        mapCanvas = new MapCanvas(sceneState);
-        sidebarPanel = new SidebarPanel(sceneState);
-        scenePanel = new ScenePanel(sceneManager, musicController, sceneState);
-        wireScenePanel();
-    }
+    private void onSceneChanged(SceneState newState) {
+        MapCanvas newCanvas = new MapCanvas(newState);
+        SidebarPanel newSidebar = new SidebarPanel(newState);
+        newSidebar.setOwnerStage(stage);
+        newSidebar.setOnDetailsEntity(this::showDetailsPopup);
 
-    private void wireSidebar() {
-        sidebarPanel.setOwnerStage(stage);
-        sidebarPanel.setOnPlaceEntity(entity -> {
-            mapCanvas.setPendingEntity(entity);
-            setStatus("Click on the map to place: " + entity.getName());
-        });
-        sidebarPanel.setOnDetailsEntity(this::showDetailsPopup);
-        sidebarPanel.setOnEntitiesChanged(() -> {
-            mapCanvas.syncTokens();
-            refreshPlayerView();
-            setStatus("Entities updated.");
-        });
-    }
-
-    private void wireMapCanvas() {
-        mapCanvas.setOnTokenRightClick((token, point) ->
-                showTokenContextMenu(token, point.getX(), point.getY()));
-        mapCanvas.setOnTokensChanged(this::refreshPlayerView);
-    }
-
-    private void wireScenePanel() {
-        scenePanel.setOnSceneSwitch(this::switchToScene);
-        scenePanel.setOnSceneAdd(this::addScene);
-        scenePanel.setOnSceneMove((id, delta) -> {
-            sceneManager.moveScene(id, delta);
-            SceneStateManager.saveMaster(sceneManager);
-            scenePanel.refreshSceneList();
-        });
-        scenePanel.setOnSceneRename((id, name) -> {
-            sceneManager.getById(id).ifPresent(e -> e.setName(name));
-            SceneStateManager.saveMaster(sceneManager);
-            scenePanel.refreshSceneList();
-            scenePanel.refreshMusic(sceneState);
-        });
-        scenePanel.setOnSceneDelete(this::deleteScene);
-    }
-
-    private void switchToScene(String sceneId) {
-        if (sceneId.equals(sceneManager.getActiveSceneId())) {
-            return;
-        }
-
-        sceneState.save();
-        musicController.stopAll();
-
-        sceneState = SceneStateManager.loadScene(sceneId);
-        sceneManager.setActiveSceneId(sceneId);
-        SceneStateManager.saveMaster(sceneManager);
-
-        mapCanvas = new MapCanvas(sceneState);
-        sidebarPanel = new SidebarPanel(sceneState);
-        wireSidebar();
-        wireMapCanvas();
+        mapController.attachScene(newState, newCanvas, newSidebar);
 
         double divPos = splitPane.getDividerPositions()[0];
-        splitPane.getItems().setAll(sidebarPanel, mapCanvas);
+        splitPane.getItems().setAll(newSidebar, newCanvas);
         splitPane.setDividerPositions(divPos);
 
-        mapCanvas.reloadFromState();
-        sidebarPanel.refresh();
+        newCanvas.reloadFromState();
+        newSidebar.refresh();
 
         scenePanel.refreshSceneList();
-        scenePanel.refreshMusic(sceneState);
+        scenePanel.refreshMusic(newState);
 
         if (playerView != null && playerView.isShowing()) {
-            SceneState newGs = sceneState;
-            playerView.fadeTransitionTo(() -> playerView.refreshScene(newGs));
+            playerView.fadeTransitionTo(() -> playerView.refreshScene(newState));
         }
 
-        setStatus("Scene: " + activeSceneName());
-    }
-
-    private void addScene() {
-        String id = "scene_" + Long.toHexString(System.currentTimeMillis());
-        int order = sceneManager.getScenes().size();
-        SceneEntry entry = new SceneEntry(id, "New Scene", order);
-        sceneManager.addScene(entry);
-        SceneState newGs = SceneStateManager.createNewScene(id);
-        newGs.save();
-        SceneStateManager.saveMaster(sceneManager);
-        switchToScene(id);
-    }
-
-    private void deleteScene(String id) {
-        if (sceneManager.getScenes().size() <= 1) {
-            return;
-        }
-        boolean wasActive = id.equals(sceneManager.getActiveSceneId());
-        sceneManager.removeScene(id);
-        if (wasActive) {
-            String nextId = sceneManager.getScenes().get(0).getId();
-            sceneManager.setActiveSceneId(nextId);
-            SceneStateManager.saveMaster(sceneManager);
-            switchToScene(nextId);
-        } else {
-            SceneStateManager.saveMaster(sceneManager);
-            scenePanel.refreshSceneList();
-        }
+        setStatus("Scene: " + sceneController.getActiveSceneName());
     }
 
     private MenuBar buildMenuBar() {
@@ -231,47 +161,31 @@ public class MainWindow {
         bar.setStyle("-fx-background-color: #16163a;");
 
         Menu fileMenu = new Menu("File");
-
-        MenuItem ReplayLog = new MenuItem("Replay Log…");
-        ReplayLog.setOnAction(e -> loadLogFromFile());
-
-        fileMenu.getItems().addAll(ReplayLog, new SeparatorMenuItem());
+        MenuItem replayLog = new MenuItem("Replay Log…");
+        replayLog.setOnAction(e -> loadLogFromFile());
+        fileMenu.getItems().addAll(replayLog, new SeparatorMenuItem());
 
         Menu mapMenu = new Menu("Map");
 
         MenuItem loadMap = new MenuItem("Load Map PNG…");
-        loadMap.setOnAction(e -> loadMapFromFile());
+        loadMap.setOnAction(e -> mapController.browseAndLoadMap());
 
         MenuItem setWidth = new MenuItem("Set Map Width in Feet…");
         setWidth.setOnAction(e -> promptMapWidth());
 
         MenuItem fitMap = new MenuItem("Fit Map to Window");
-        fitMap.setOnAction(e -> {
-            mapCanvas.reloadFromState();
-            refreshPlayerView();
-        });
+        fitMap.setOnAction(e -> mapController.fitMap());
 
         MenuItem clearMap = new MenuItem("Clear Map…");
-        clearMap.setOnAction(e -> {
-            sceneState.clearMapOnly();
-            mapCanvas.reloadFromState();
-            refreshPlayerView();
-            setStatus("Map cleared.");
-        });
+        clearMap.setOnAction(e -> mapController.clearMap());
 
         CheckMenuItem toggleNames = new CheckMenuItem("Show Names");
         toggleNames.setSelected(true);
-        toggleNames.setOnAction(e -> {
-            mapCanvas.setNamesVisible(toggleNames.isSelected());
-            refreshPlayerView();
-        });
+        toggleNames.setOnAction(e -> mapController.setNamesVisible(toggleNames.isSelected()));
 
         CheckMenuItem toggleStatus = new CheckMenuItem("Show Status Effects");
         toggleStatus.setSelected(true);
-        toggleStatus.setOnAction(e -> {
-            mapCanvas.setStatusVisible(toggleStatus.isSelected());
-            refreshPlayerView();
-        });
+        toggleStatus.setOnAction(e -> mapController.setStatusVisible(toggleStatus.isSelected()));
 
         mapMenu.getItems().addAll(loadMap, setWidth, new SeparatorMenuItem(), fitMap,
                 new SeparatorMenuItem(), clearMap, new SeparatorMenuItem(),
@@ -282,26 +196,12 @@ public class MainWindow {
         CheckMenuItem enableLog = new CheckMenuItem("Enable Logging");
         enableLog.setSelected(false);
         enableLog.setOnAction(e -> {
-            // Handle logging enablement
-            /*
-            TODO for logging:
-            - Enable/disable logging should be logged as an action.
-            - Log should be disabled when quitting the app.
-            - Add / delete player/character
-            - player/character movements
-            - applying status effects
-            - mount or dismount token
-            - scene change (as there are multiple scenes the dungeon master can switch to)
-            */
+            // TODO: logging — add/delete player/character, movements, status effects,
+            // mount/dismount, scene changes; disable on quit; undo based on log.
         });
 
         MenuItem clearPositions = new MenuItem("Clear Token Positions");
-        clearPositions.setOnAction(e -> {
-            sceneState.clearMapPositions();
-            mapCanvas.syncTokens();
-            refreshPlayerView();
-            setStatus("Token positions cleared.");
-        });
+        clearPositions.setOnAction(e -> mapController.clearTokenPositions());
 
         MenuItem clearAll = new MenuItem("Clear All…");
         clearAll.setOnAction(e -> {
@@ -311,10 +211,7 @@ public class MainWindow {
             confirm.setTitle("Clear All");
             confirm.showAndWait().ifPresent(btn -> {
                 if (btn == ButtonType.YES) {
-                    sceneState.clearAll();
-                    mapCanvas.reloadFromState();
-                    sidebarPanel.refresh();
-                    refreshPlayerView();
+                    sceneController.clearAll();
                     setStatus("Scene cleared.");
                 }
             });
@@ -329,66 +226,30 @@ public class MainWindow {
             if (playerView == null) {
                 playerView = new PlayerView(stage);
             }
-            playerView.show(sceneState);
+            playerView.show(sceneController.getActiveState());
         });
         viewMenu.getItems().add(openPlayerView);
 
-        Menu UndoMenu = new Menu("Undo");
+        Menu undoMenu = new Menu("Undo");
         MenuItem undoAction = new MenuItem("Undo Last Action");
         undoAction.setOnAction(e -> {
-            // Implement undo functionality
-            /*
-            TODO: undo is based on the last action in the log - up to the point when the log was enabled.
-            After an action is undone and replaced by log-able action, the undone action should be removed from the log
-            to prevent redo of an invalid action.
-            */
+            // TODO: undo based on log — after undo, remove undone action from log.
         });
+        undoMenu.getItems().add(undoAction);
 
-        Menu RedoMenu = new Menu("Redo");
+        Menu redoMenu = new Menu("Redo");
         MenuItem redoAction = new MenuItem("Redo Last Action");
         redoAction.setOnAction(e -> {
-            // Implement redo functionality
+            // TODO: redo functionality
         });
+        redoMenu.getItems().add(redoAction);
 
-        bar.getMenus().addAll(fileMenu, mapMenu, optionsMenu, viewMenu, UndoMenu, RedoMenu);
+        bar.getMenus().addAll(fileMenu, mapMenu, optionsMenu, viewMenu, undoMenu, redoMenu);
         return bar;
     }
 
-    private void loadLogFromFile() {
-        // Implement log replay functionality
-    }
-
-    private void loadMapFromFile() {
-        File file = FileHelper.browseForMap(stage);
-        if (file == null) {
-            return;
-        }
-        String mapPath = FileHelper.toRelativePath(file);
-        sceneState.setMapImagePath(mapPath);
-        mapCanvas.loadMap(mapPath);
-        refreshPlayerView();
-        setStatus("Map loaded: " + file.getName());
-    }
-
-    private void promptMapWidth() {
-        TextInputDialog dialog = new TextInputDialog(
-                String.valueOf((int) sceneState.getMapWidthInFeet()));
-        dialog.setTitle("Map Width");
-        dialog.setHeaderText("How wide is the map in feet?");
-        dialog.setContentText("Width in feet:");
-        dialog.showAndWait().ifPresent(val -> {
-            try {
-                double feet = Double.parseDouble(val);
-                sceneState.setMapWidthInFeet(feet);
-                mapCanvas.onMapWidthChanged();
-                setStatus("Map width set to " + feet + " ft.");
-            } catch (NumberFormatException ex) {
-                setStatus("Invalid value — map width unchanged.");
-            }
-        });
-    }
-
-    private void showTokenContextMenu(Token token, double screenX, double screenY) {
+    /** Builds and shows the token right-click context menu. All actions delegate to MapController. */
+    private void showTokenContextMenu(Token token, Point2D screenPoint) {
         ContextMenu menu = new ContextMenu();
 
         MenuItem nameItem = new MenuItem(token.getEntity().getName());
@@ -400,25 +261,14 @@ public class MainWindow {
         for (String s : StatusEffect.ALL) {
             boolean active = token.getEntity().getStatusEffects().contains(s);
             MenuItem item = new MenuItem((active ? "✓ " : "    ") + s);
-            item.setOnAction(e -> {
-                if (active) {
-                    token.getEntity().removeStatusEffect(s);
-                } else {
-                    token.getEntity().addStatusEffect(s);
-                }
-                sceneState.entityChanged();
-                mapCanvas.repaint();
-                refreshPlayerView();
-            });
+            item.setOnAction(e -> mapController.toggleStatus(token.getEntity(), s));
             statusMenu.getItems().add(item);
         }
         menu.getItems().add(statusMenu);
 
         MenuItem removeFromMap = new MenuItem("Remove from Map");
         removeFromMap.setOnAction(e -> {
-            mapCanvas.removeSelectedToken();
-            sidebarPanel.disarmCard();
-            refreshPlayerView();
+            mapController.removeToken(token);
             setStatus(token.getEntity().getName() + " removed from map.");
         });
         menu.getItems().add(new SeparatorMenuItem());
@@ -428,7 +278,8 @@ public class MainWindow {
         viewDetails.setOnAction(e -> showDetailsPopup(token.getEntity()));
         menu.getItems().add(viewDetails);
 
-        menu.show(mapCanvas.getScene().getWindow(), screenX, screenY);
+        menu.show(mapController.getMapCanvas().getScene().getWindow(),
+                screenPoint.getX(), screenPoint.getY());
     }
 
     private void showDetailsPopup(Entity entity) {
@@ -460,6 +311,25 @@ public class MainWindow {
         popup.show();
     }
 
+    private void promptMapWidth() {
+        double current = sceneController.getActiveState().getMapWidthInFeet();
+        TextInputDialog dialog = new TextInputDialog(String.valueOf((int) current));
+        dialog.setTitle("Map Width");
+        dialog.setHeaderText("How wide is the map in feet?");
+        dialog.setContentText("Width in feet:");
+        dialog.showAndWait().ifPresent(val -> {
+            try {
+                mapController.setMapWidth(Double.parseDouble(val));
+            } catch (NumberFormatException ex) {
+                setStatus("Invalid value — map width unchanged.");
+            }
+        });
+    }
+
+    private void loadLogFromFile() {
+        // TODO: log replay functionality
+    }
+
     private void setStatus(String message) {
         statusLabel.setText(message);
     }
@@ -468,9 +338,5 @@ public class MainWindow {
         if (playerView != null && playerView.isShowing()) {
             playerView.refresh();
         }
-    }
-
-    private String activeSceneName() {
-        return sceneManager.getActiveEntry().map(SceneEntry::getName).orElse("Unknown");
     }
 }
