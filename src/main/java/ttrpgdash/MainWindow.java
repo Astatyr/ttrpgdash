@@ -230,6 +230,13 @@ public class MainWindow {
         MenuBar bar = new MenuBar();
         bar.setStyle("-fx-background-color: #16163a;");
 
+        Menu fileMenu = new Menu("File");
+
+        MenuItem ReplayLog = new MenuItem("Replay Log…");
+        ReplayLog.setOnAction(e -> loadLogFromFile());
+
+        fileMenu.getItems().addAll(ReplayLog, new SeparatorMenuItem());
+
         Menu mapMenu = new Menu("Map");
 
         MenuItem loadMap = new MenuItem("Load Map PNG…");
@@ -272,6 +279,22 @@ public class MainWindow {
 
         Menu optionsMenu = new Menu("Options");
 
+        CheckMenuItem enableLog = new CheckMenuItem("Enable Logging");
+        enableLog.setSelected(false);
+        enableLog.setOnAction(e -> {
+            // Handle logging enablement
+            /*
+            TODO for logging:
+            - Enable/disable logging should be logged as an action.
+            - Log should be disabled when quitting the app.
+            - Add / delete player/character
+            - player/character movements
+            - applying status effects
+            - mount or dismount token
+            - scene change (as there are multiple scenes the dungeon master can switch to)
+            */
+        });
+
         MenuItem clearPositions = new MenuItem("Clear Token Positions");
         clearPositions.setOnAction(e -> {
             sceneState.clearMapPositions();
@@ -297,7 +320,8 @@ public class MainWindow {
             });
         });
 
-        optionsMenu.getItems().addAll(clearPositions, new SeparatorMenuItem(), clearAll);
+        optionsMenu.getItems().addAll(enableLog, new SeparatorMenuItem(), clearPositions,
+                new SeparatorMenuItem(), clearAll);
 
         Menu viewMenu = new Menu("View");
         MenuItem openPlayerView = new MenuItem("Open Player View");
@@ -309,8 +333,29 @@ public class MainWindow {
         });
         viewMenu.getItems().add(openPlayerView);
 
-        bar.getMenus().addAll(mapMenu, optionsMenu, viewMenu);
+        Menu UndoMenu = new Menu("Undo");
+        MenuItem undoAction = new MenuItem("Undo Last Action");
+        undoAction.setOnAction(e -> {
+            // Implement undo functionality
+            /*
+            TODO: undo is based on the last action in the log - up to the point when the log was enabled.
+            After an action is undone and replaced by log-able action, the undone action should be removed from the log
+            to prevent redo of an invalid action.
+            */
+        });
+
+        Menu RedoMenu = new Menu("Redo");
+        MenuItem redoAction = new MenuItem("Redo Last Action");
+        redoAction.setOnAction(e -> {
+            // Implement redo functionality
+        });
+
+        bar.getMenus().addAll(fileMenu, mapMenu, optionsMenu, viewMenu, UndoMenu, RedoMenu);
         return bar;
+    }
+
+    private void loadLogFromFile() {
+        // Implement log replay functionality
     }
 
     private void loadMapFromFile() {
