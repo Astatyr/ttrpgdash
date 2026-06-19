@@ -269,7 +269,7 @@ public final class Token {
             if (icon != null && !icon.isError()) {
                 gc.drawImage(icon, x, iconY, iconSize, iconSize);
             } else {
-                gc.setFill(statusColor(effect));
+                gc.setFill(StatusEffect.fallbackColor(effect));
                 gc.fillOval(x, iconY, iconSize, iconSize);
                 gc.setStroke(Color.BLACK);
                 gc.setLineWidth(0.5);
@@ -327,22 +327,6 @@ public final class Token {
         Image icon = FileHelper.fileExists(path) ? FileHelper.loadImage(path) : null;
         STATUS_ICONS.put(effect, icon);
         return icon;
-    }
-
-    /** Fallback colour used when no PNG is found for a status effect. */
-    private Color statusColor(String effect) {
-        return switch (effect.toLowerCase()) {
-        case "poisoned" -> Color.LIMEGREEN;
-        case "stunned" -> Color.ORANGE;
-        case "burning" -> Color.ORANGERED;
-        case "frozen" -> Color.DEEPSKYBLUE;
-        case "bleeding" -> Color.CRIMSON;
-        case "cursed" -> Color.MEDIUMPURPLE;
-        case "invisible" -> Color.LIGHTGRAY;
-        case "blessed" -> Color.GOLD;
-        case "exhausted" -> Color.SADDLEBROWN;
-        default -> Color.WHITE;
-        };
     }
 
     /**

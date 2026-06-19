@@ -6,9 +6,9 @@ package ttrpgdash.music;
  */
 public class MusicTrack {
 
-    private String id;
-    private String name;
-    private String filePath;
+    private final String id;
+    private final String name;
+    private final String filePath;
     private double volume;
     private boolean loop;
 
