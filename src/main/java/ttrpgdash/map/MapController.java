@@ -8,6 +8,7 @@ import javafx.geometry.Point2D;
 import javafx.stage.Stage;
 import ttrpgdash.entity.Entity;
 import ttrpgdash.entity.SidebarPanel;
+import ttrpgdash.log.LogController;
 import ttrpgdash.scene.SceneState;
 import ttrpgdash.util.FileHelper;
 
@@ -33,6 +34,7 @@ public class MapController {
     private Runnable onStateChanged;
     private BiConsumer<Token, Point2D> onTokenRightClick;
     private Consumer<String> onStatusMessage;
+    private LogController logController;
 
     /**
      * Creates the controller bound to the given stage (used for file chooser dialogs).
@@ -56,6 +58,19 @@ public class MapController {
             }
         });
         canvas.setOnTokensChanged(() -> fireStateChanged());
+        canvas.setOnTokenPlaced(token -> {
+            if (logController != null) {
+                logController.logPlaceToken(token.getEntity(),
+                        token.getEntity().getXFraction(),
+                        token.getEntity().getYFraction());
+            }
+        });
+        canvas.setOnTokenMoved((token, coords) -> {
+            if (logController != null) {
+                logController.logMoveToken(token.getEntity(),
+                        coords[0], coords[1], coords[2], coords[3]);
+            }
+        });
 
         sidebar.setOnEntitiesChanged(() -> {
             mapCanvas.syncTokens();
@@ -88,12 +103,19 @@ public class MapController {
         this.onStatusMessage = handler;
     }
 
+    public void setLogController(LogController lc) {
+        this.logController = lc;
+    }
+
     /**
      * Loads a map image from the given relative path and resets the view.
      */
     public void setMap(String relativePath, String displayName) {
         sceneState.setMapImagePath(relativePath);
         mapCanvas.loadMap(relativePath);
+        if (logController != null) {
+            logController.logAddMap(relativePath, sceneState.getMapWidthInFeet());
+        }
         fireStateChanged();
         fireStatus("Map loaded: " + displayName);
     }
@@ -102,8 +124,12 @@ public class MapController {
      * Updates the map's real-world width and recalculates token radii.
      */
     public void setMapWidth(double feet) {
+        double oldFeet = sceneState.getMapWidthInFeet();
         sceneState.setMapWidthInFeet(feet);
         mapCanvas.onMapWidthChanged();
+        if (logController != null) {
+            logController.logChangeMapSize(oldFeet, feet);
+        }
         fireStateChanged();
         fireStatus("Map width set to " + feet + " ft.");
     }
@@ -140,13 +166,21 @@ public class MapController {
      * Toggles the given status effect on the entity and triggers a repaint.
      */
     public void toggleStatus(Entity entity, String status) {
-        if (entity.getStatusEffects().contains(status)) {
-            entity.removeStatusEffect(status);
-        } else {
+        boolean adding = !entity.getStatusEffects().contains(status);
+        if (adding) {
             entity.addStatusEffect(status);
+        } else {
+            entity.removeStatusEffect(status);
         }
         sceneState.entityChanged();
         mapCanvas.repaint();
+        if (logController != null) {
+            if (adding) {
+                logController.logAddStatusEffect(entity.getName(), status);
+            } else {
+                logController.logRemoveStatusEffect(entity.getName(), status);
+            }
+        }
         fireStateChanged();
     }
 
@@ -154,6 +188,9 @@ public class MapController {
      * Removes the given token from the map and disarms the sidebar card.
      */
     public void removeToken(Token token) {
+        if (logController != null) {
+            logController.logRemoveFromMap(token.getEntity());
+        }
         mapCanvas.removeToken(token);
         sidebarPanel.disarmCard();
         fireStateChanged();
@@ -164,6 +201,97 @@ public class MapController {
      */
     public void setPendingEntity(Entity entity) {
         mapCanvas.setPendingEntity(entity);
+    }
+
+    /**
+     * Moves the first entity matching the given name to the specified map-fraction
+     * coordinates. Used by the undo handler to reverse a token move.
+     */
+    public void moveEntityTo(String entityName, double xFraction, double yFraction) {
+        sceneState.findByName(entityName).ifPresent(e -> {
+            e.setXFraction(xFraction);
+            e.setYFraction(yFraction);
+            sceneState.entityChanged();
+            mapCanvas.syncTokens();
+            fireStateChanged();
+        });
+    }
+
+    /**
+     * Places the entity with the given name onto the map at the stored fraction coordinates.
+     * Used by undo of Remove From Map.
+     */
+    public void placeEntityOnMap(String name, double xFraction, double yFraction) {
+        sceneState.findByName(name).ifPresent(e -> {
+            e.setOnMap(true);
+            e.setXFraction(xFraction);
+            e.setYFraction(yFraction);
+            sceneState.entityChanged();
+            mapCanvas.syncTokens();
+            fireStateChanged();
+        });
+    }
+
+    /**
+     * Removes the entity with the given name from the map without removing it from the session.
+     * Used by undo of Place and redo of Remove From Map.
+     */
+    public void removeEntityFromMap(String name) {
+        sceneState.findByName(name).ifPresent(e -> {
+            e.setOnMap(false);
+            e.setMountedOnId(null);
+            sceneState.entityChanged();
+            mapCanvas.syncTokens();
+            fireStateChanged();
+        });
+    }
+
+    /**
+     * Sets the rider's mount to the entity matching mountName.
+     * Used by undo of Dismount and redo of Mount.
+     */
+    public void setMount(String riderName, String mountName) {
+        sceneState.findByName(mountName).ifPresent(mount ->
+                sceneState.findByName(riderName).ifPresent(rider -> {
+                    rider.setMountedOnId(mount.getId());
+                    sceneState.entityChanged();
+                    mapCanvas.syncTokens();
+                    fireStateChanged();
+                }));
+    }
+
+    /**
+     * Clears the rider's mount.
+     * Used by undo of Mount and redo of Dismount.
+     */
+    public void clearMount(String riderName) {
+        sceneState.findByName(riderName).ifPresent(rider -> {
+            rider.setMountedOnId(null);
+            sceneState.entityChanged();
+            mapCanvas.syncTokens();
+            fireStateChanged();
+        });
+    }
+
+    /**
+     * Parses a comma-separated status-effects string from the log and restores it onto
+     * the entity, replacing whatever effects it currently has.
+     */
+    public void restoreStatusEffects(String entityName, String statusEffectsStr) {
+        sceneState.findByName(entityName).ifPresent(e -> {
+            e.getStatusEffects().clear();
+            if (statusEffectsStr != null && !"none".equals(statusEffectsStr)
+                    && !statusEffectsStr.isBlank()) {
+                for (String s : statusEffectsStr.split(",\\s*")) {
+                    if (!s.isBlank()) {
+                        e.addStatusEffect(s.trim());
+                    }
+                }
+            }
+            sceneState.entityChanged();
+            mapCanvas.repaint();
+            fireStateChanged();
+        });
     }
 
     /**

@@ -26,6 +26,9 @@ import javafx.stage.Stage;
 import ttrpgdash.entity.Entity;
 import ttrpgdash.entity.SidebarPanel;
 import ttrpgdash.entity.StatusEffect;
+import ttrpgdash.log.LogController;
+import ttrpgdash.log.RedoHandler;
+import ttrpgdash.log.UndoHandler;
 import ttrpgdash.map.MapCanvas;
 import ttrpgdash.map.MapController;
 import ttrpgdash.map.Token;
@@ -51,6 +54,9 @@ public class MainWindow {
 
     private final SceneController sceneController;
     private MapController mapController;
+    private final LogController logController = new LogController();
+    private UndoHandler undoHandler;
+    private RedoHandler redoHandler;
 
     /**
      * Creates the window for the given scene manager.
@@ -71,14 +77,16 @@ public class MainWindow {
         SidebarPanel sidebarPanel = new SidebarPanel(state);
 
         mapController = new MapController(stage);
+        mapController.setLogController(logController);
         mapController.attachScene(state, mapCanvas, sidebarPanel);
         mapController.setOnStateChanged(this::refreshPlayerView);
         mapController.setOnTokenRightClick(this::showTokenContextMenu);
         mapController.setOnStatusMessage(this::setStatus);
 
+        sceneController.setLogController(logController);
         scenePanel = new ScenePanel(sceneController.getSceneManager(),
                 sceneController.getMusicController(), state);
-        sceneController.attachScenePanel(scenePanel);
+        wireScenePanel(scenePanel);
         sceneController.setOnSceneChanged(this::onSceneChanged);
         sceneController.setOnSceneListChanged(() -> scenePanel.refreshSceneList());
         sceneController.setOnStateChanged(() -> {
@@ -86,9 +94,18 @@ public class MainWindow {
             mapController.getSidebarPanel().refresh();
             refreshPlayerView();
         });
+        sceneController.setOnEntitiesChanged(() -> {
+            mapController.getMapCanvas().syncTokens();
+            mapController.getSidebarPanel().refresh();
+            refreshPlayerView();
+        });
+
+        undoHandler = new UndoHandler(mapController, sceneController);
+        redoHandler = new RedoHandler(mapController, sceneController);
 
         sidebarPanel.setOwnerStage(stage);
         sidebarPanel.setOnDetailsEntity(this::showDetailsPopup);
+        wireEntityLogging(sidebarPanel);
 
         splitPane = new SplitPane();
         splitPane.setOrientation(Orientation.HORIZONTAL);
@@ -131,11 +148,31 @@ public class MainWindow {
         setStatus("Scene: " + sceneController.getActiveSceneName());
     }
 
+    private void wireScenePanel(ScenePanel panel) {
+        panel.setOnSceneSwitch(sceneController::switchToScene);
+        panel.setOnSceneAdd(sceneController::addScene);
+        panel.setOnSceneMove(sceneController::moveScene);
+        panel.setOnSceneRename((id, newName) -> {
+            String oldName = sceneController.getSceneManager()
+                    .getById(id).map(ttrpgdash.scene.SceneEntry::getName).orElse("Unknown");
+            logController.logRenameScene(id, oldName, newName);
+            sceneController.renameScene(id, newName);
+        });
+        panel.setOnSceneDelete(sceneController::deleteScene);
+        panel.setOnMusicChanged(() -> sceneController.getActiveState().entityChanged());
+    }
+
+    private void wireEntityLogging(SidebarPanel sidebar) {
+        sidebar.setOnEntityAdded(e -> logController.logAddEntity(e));
+        sidebar.setOnEntityRemoved(e -> logController.logRemoveEntity(e));
+    }
+
     private void onSceneChanged(SceneState newState) {
         MapCanvas newCanvas = new MapCanvas(newState);
         SidebarPanel newSidebar = new SidebarPanel(newState);
         newSidebar.setOwnerStage(stage);
         newSidebar.setOnDetailsEntity(this::showDetailsPopup);
+        wireEntityLogging(newSidebar);
 
         mapController.attachScene(newState, newCanvas, newSidebar);
 
@@ -196,8 +233,14 @@ public class MainWindow {
         CheckMenuItem enableLog = new CheckMenuItem("Enable Logging");
         enableLog.setSelected(false);
         enableLog.setOnAction(e -> {
-            // TODO: logging — add/delete player/character, movements, status effects,
-            // mount/dismount, scene changes; disable on quit; undo based on log.
+            if (enableLog.isSelected()) {
+                logController.enable(sceneController.getSceneManager(),
+                        sceneController.getActiveState());
+                setStatus("Logging started.");
+            } else {
+                logController.disable();
+                setStatus("Logging stopped.");
+            }
         });
 
         MenuItem clearPositions = new MenuItem("Clear Token Positions");
@@ -233,14 +276,30 @@ public class MainWindow {
         Menu undoMenu = new Menu("Undo");
         MenuItem undoAction = new MenuItem("Undo Last Action");
         undoAction.setOnAction(e -> {
-            // TODO: undo based on log — after undo, remove undone action from log.
+            if (logController.canUndo()) {
+                var entry = logController.doUndo();
+                if (entry != null) {
+                    undoHandler.undo(entry);
+                    setStatus("Undone: " + entry.getEvent().name().replace('_', ' ').toLowerCase());
+                }
+            } else {
+                setStatus("Nothing to undo.");
+            }
         });
         undoMenu.getItems().add(undoAction);
 
         Menu redoMenu = new Menu("Redo");
         MenuItem redoAction = new MenuItem("Redo Last Action");
         redoAction.setOnAction(e -> {
-            // TODO: redo functionality
+            if (logController.canRedo()) {
+                var entry = logController.doRedo();
+                if (entry != null) {
+                    redoHandler.apply(entry);
+                    setStatus("Redone: " + entry.getEvent().name().replace('_', ' ').toLowerCase());
+                }
+            } else {
+                setStatus("Nothing to redo.");
+            }
         });
         redoMenu.getItems().add(redoAction);
 
@@ -327,7 +386,20 @@ public class MainWindow {
     }
 
     private void loadLogFromFile() {
-        // TODO: log replay functionality
+        javafx.stage.FileChooser chooser = new javafx.stage.FileChooser();
+        chooser.setTitle("Select Session Log");
+        chooser.getExtensionFilters().add(
+                new javafx.stage.FileChooser.ExtensionFilter("Log files", "*.log"));
+        java.io.File logsDir = new java.io.File("logs");
+        if (logsDir.exists() && logsDir.isDirectory()) {
+            chooser.setInitialDirectory(logsDir);
+        }
+        java.io.File selected = chooser.showOpenDialog(stage);
+        if (selected == null) {
+            return;
+        }
+        // TODO (replay): parse selected log and open the visual replay window
+        setStatus("Log selected: " + selected.getName() + " — replay not yet implemented.");
     }
 
     private void setStatus(String message) {

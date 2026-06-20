@@ -367,6 +367,14 @@ public class MapCanvas extends Pane {
         this.onTokensChanged = handler;
     }
 
+    public void setOnTokenPlaced(java.util.function.Consumer<Token> handler) {
+        tokenLayer.setOnTokenPlaced(handler);
+    }
+
+    public void setOnTokenMoved(java.util.function.BiConsumer<Token, double[]> handler) {
+        tokenLayer.setOnTokenMoved(handler);
+    }
+
     public TokenLayer getTokenLayer() {
         return tokenLayer;
     }

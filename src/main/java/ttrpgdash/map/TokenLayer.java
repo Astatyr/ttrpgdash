@@ -51,6 +51,19 @@ public class TokenLayer {
 
     private Entity pendingEntity = null;
 
+    /** Fired after a token is successfully placed on the map. */
+    private java.util.function.Consumer<Token> onTokenPlaced;
+    /** Fired after a drag-drop; carries the token and {fromX, fromY, toX, toY}. */
+    private java.util.function.BiConsumer<Token, double[]> onTokenMoved;
+
+    public void setOnTokenPlaced(java.util.function.Consumer<Token> handler) {
+        this.onTokenPlaced = handler;
+    }
+
+    public void setOnTokenMoved(java.util.function.BiConsumer<Token, double[]> handler) {
+        this.onTokenMoved = handler;
+    }
+
     public TokenLayer(SceneState sceneState) {
         this.sceneState = sceneState;
     }
@@ -209,8 +222,14 @@ public class TokenLayer {
         if (overlapping.isEmpty()) {
             // Free space — update entity position in SceneState
             persistTokenPosition(draggedToken);
-            // Unmount if was mounted
             draggedToken.getEntity().setMountedOnId(null);
+            if (onTokenMoved != null) {
+                onTokenMoved.accept(draggedToken, new double[]{
+                    dragOriginalXFraction, dragOriginalYFraction,
+                    draggedToken.getEntity().getXFraction(),
+                    draggedToken.getEntity().getYFraction()
+                });
+            }
 
         } else if (overlapping.size() == 1) {
             // Exactly one overlap — mount on it
@@ -252,6 +271,9 @@ public class TokenLayer {
         tokens.put(entity.getId(), candidate);
         pendingEntity = null;
         sceneState.entityChanged();
+        if (onTokenPlaced != null) {
+            onTokenPlaced.accept(candidate);
+        }
         return true;
     }
 

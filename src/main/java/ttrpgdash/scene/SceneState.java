@@ -131,6 +131,16 @@ public class SceneState {
      * Finds any entity by ID regardless of type.
      * Returns an Optional — always check isPresent() before using.
      */
+    /**
+     * Finds any entity by display name regardless of type.
+     * Returns the first match — names are not guaranteed unique.
+     */
+    public Optional<Entity> findByName(String name) {
+        return getAllEntities().stream()
+                .filter(e -> e.getName().equals(name))
+                .findFirst();
+    }
+
     public Optional<Entity> findById(String id) {
         return getAllEntities().stream()
                 .filter(e -> e.getId().equals(id))

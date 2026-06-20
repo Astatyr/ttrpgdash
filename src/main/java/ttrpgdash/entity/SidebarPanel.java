@@ -40,6 +40,8 @@ public class SidebarPanel extends VBox {
     private Consumer<Entity> onPlaceEntity;
     private Consumer<Entity> onDetailsEntity;
     private Runnable onEntitiesChanged;
+    private Consumer<Entity> onEntityAdded;
+    private Consumer<Entity> onEntityRemoved;
 
     private EntityCard armedCard = null;
 
@@ -147,7 +149,6 @@ public class SidebarPanel extends VBox {
         });
 
         card.setOnDelete(e -> {
-            // Remove from SceneState
             if (e instanceof PlayerEntity) {
                 sceneState.removePlayer(e.getId());
             }
@@ -155,6 +156,9 @@ public class SidebarPanel extends VBox {
                 sceneState.removeCharacter(e.getId());
             }
             refresh();
+            if (onEntityRemoved != null) {
+                onEntityRemoved.accept(e);
+            }
             if (onEntitiesChanged != null) {
                 onEntitiesChanged.run();
             }
@@ -181,6 +185,9 @@ public class SidebarPanel extends VBox {
 
         sceneState.addPlayer(player);
         refresh();
+        if (onEntityAdded != null) {
+            onEntityAdded.accept(player);
+        }
         if (onEntitiesChanged != null) {
             onEntitiesChanged.run();
         }
@@ -204,6 +211,9 @@ public class SidebarPanel extends VBox {
 
         sceneState.addCharacter(character);
         refresh();
+        if (onEntityAdded != null) {
+            onEntityAdded.accept(character);
+        }
         if (onEntitiesChanged != null) {
             onEntitiesChanged.run();
         }
@@ -288,5 +298,13 @@ public class SidebarPanel extends VBox {
 
     public void setOnEntitiesChanged(Runnable handler) {
         this.onEntitiesChanged = handler;
+    }
+
+    public void setOnEntityAdded(Consumer<Entity> handler) {
+        this.onEntityAdded = handler;
+    }
+
+    public void setOnEntityRemoved(Consumer<Entity> handler) {
+        this.onEntityRemoved = handler;
     }
 }
