@@ -43,6 +43,7 @@ import ttrpgdash.scene.SceneController;
 import ttrpgdash.scene.SceneEntry;
 import ttrpgdash.scene.SceneManager;
 import ttrpgdash.scene.ScenePanel;
+import ttrpgdash.scene.SceneStateManager;
 import ttrpgdash.scene.SceneState;
 import ttrpgdash.util.FileHelper;
 
@@ -240,7 +241,14 @@ public class MainWindow {
                 ProjectManager.saveProject(sceneController.getSceneManager(), stage));
 
         MenuItem loadProject = new MenuItem("Load Project…");
-        loadProject.setDisable(true); // not yet implemented
+        loadProject.setOnAction(e -> {
+            if (ProjectManager.loadProject(stage)) {
+                logController.disable();
+                SceneManager newManager = SceneStateManager.loadMaster();
+                SceneStateManager.pruneOrphanedSceneFiles(newManager);
+                new MainWindow(newManager).show(stage);
+            }
+        });
 
         MenuItem clearAll = new MenuItem("Clear All…");
         clearAll.setOnAction(e -> {
