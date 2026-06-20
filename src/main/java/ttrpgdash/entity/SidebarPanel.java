@@ -1,9 +1,6 @@
 package ttrpgdash.entity;
 
 import java.io.File;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import java.util.function.Consumer;
 
 import javafx.geometry.Insets;
@@ -173,7 +170,7 @@ public class SidebarPanel extends VBox {
             return;
         }
 
-        String name = assignDisplayName(folder.getName(), sceneState.getPlayers());
+        String name = EntityNaming.assignDisplayName(folder.getName(), sceneState.getPlayers());
         String id = FileHelper.generateId(name);
 
         PlayerEntity player = new PlayerEntity(id, name, 5.0);
@@ -199,7 +196,7 @@ public class SidebarPanel extends VBox {
             return;
         }
 
-        String name = assignDisplayName(folder.getName(), sceneState.getCharacters());
+        String name = EntityNaming.assignDisplayName(folder.getName(), sceneState.getCharacters());
         String id = FileHelper.generateId(name);
 
         CharacterEntity character = new CharacterEntity(id, name, 5.0);
@@ -217,38 +214,6 @@ public class SidebarPanel extends VBox {
         if (onEntitiesChanged != null) {
             onEntitiesChanged.run();
         }
-    }
-
-    /**
-     * Returns the lowest available display name for the given base name within a list.
-     * The first slot uses the bare base name; subsequent slots append " 2", " 3", etc.
-     * Gaps left by removals are filled before creating a new highest number.
-     */
-    private String assignDisplayName(String baseName, List<? extends Entity> existing) {
-        Set<Integer> taken = new HashSet<>();
-        for (Entity e : existing) {
-            if (e.getName().equals(baseName)) {
-                taken.add(1);
-            } else if (e.getName().startsWith(baseName + " ")) {
-                String suffix = e.getName().substring(baseName.length() + 1);
-                try {
-                    int n = Integer.parseInt(suffix);
-                    if (n >= 2) {
-                        taken.add(n);
-                    }
-                } catch (NumberFormatException ignored) {
-                    // Name shares the prefix but is not a numbered duplicate — skip
-                }
-            }
-        }
-        if (!taken.contains(1)) {
-            return baseName;
-        }
-        int n = 2;
-        while (taken.contains(n)) {
-            n++;
-        }
-        return baseName + " " + n;
     }
 
     /**

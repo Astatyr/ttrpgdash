@@ -19,7 +19,7 @@ import ttrpgdash.scene.SceneStateManager;
 /**
  * Orchestrates session logging with a pointer-based undo/redo mechanism.
  *
- * The log file ({@code logs/session.log}) is the single source of truth.
+ * The log file ({@code logs/session_timestamp.log}) is the single source of truth.
  * Two lightweight parallel lists — {@code entryOffsets} (byte position of each
  * entry in the file) and {@code entryEvents} (event type of each entry) — act
  * as an index, giving O(1) access without duplicating entry content.
@@ -30,8 +30,10 @@ import ttrpgdash.scene.SceneStateManager;
  * are physically deleted from the file and the lists before the new entry is
  * appended.
  *
- * {@code minUndoPointer} is set after the header entries (Start Log and Scene
- * Snapshots) so the pointer can never move into them.
+ * Header entries (Start Log, Scene Snapshot, End Log) are written directly to
+ * the file but do NOT enter the index, so the undo pointer is never inflated
+ * by non-undoable records.  {@code minUndoPointer} stays at -1 after the header
+ * block, meaning the pointer must be &ge; 0 (at least one action exists) to undo.
  */
 public final class LogController {
 
@@ -60,6 +62,7 @@ public final class LogController {
     /**
      * Enables logging, writes the Start Log header and scene snapshots,
      * then locks {@code minUndoPointer} so the header cannot be undone.
+     * Header entries are written directly to the file and do NOT enter the index.
      */
     public void enable(SceneManager sceneManager, SceneState activeState) {
         if (enabled) {
@@ -77,7 +80,7 @@ public final class LogController {
             activeSceneId = sceneManager.getActiveSceneId();
             enabled = true;
             writeStartLog(sceneManager, activeState);
-            minUndoPointer = pointer;
+            minUndoPointer = pointer; // pointer is still -1; undo requires pointer >= 0
         } catch (IOException e) {
             System.err.println("[LogController] Failed to open log: " + e.getMessage());
         }
@@ -90,7 +93,7 @@ public final class LogController {
         if (!enabled) {
             return;
         }
-        writeEntry(LogEvent.END_LOG, Map.of("Time", DATE_FMT.format(Instant.now())));
+        writeHeaderEntry(LogEvent.END_LOG, Map.of("Time", DATE_FMT.format(Instant.now())));
         try {
             writer.close();
         } catch (IOException e) {
@@ -102,16 +105,10 @@ public final class LogController {
     // ── Undo / Redo ───────────────────────────────────────────────────────────
 
     /**
-     * Returns true if there is a non-header entry at the current pointer to reverse.
+     * Returns true if there is an action entry at the current pointer to reverse.
      */
     public boolean canUndo() {
-        if (pointer <= minUndoPointer) {
-            return false;
-        }
-        LogEvent ev = entryEvents.get(pointer);
-        return ev != LogEvent.START_LOG
-                && ev != LogEvent.SCENE_SNAPSHOT
-                && ev != LogEvent.END_LOG;
+        return pointer > minUndoPointer;
     }
 
     /**
@@ -296,6 +293,10 @@ public final class LogController {
 
     // ── Private helpers ───────────────────────────────────────────────────────
 
+    /**
+     * Writes an action entry: truncates superseded redo history, appends to file,
+     * and records offset + event in the index so undo/redo can reach it.
+     */
     private void writeEntry(LogEvent event, Map<String, String> fields) {
         // If pointer is behind the file end, everything after it is redo history
         // that this new action supersedes — delete it from the file now.
@@ -321,6 +322,19 @@ public final class LogController {
         }
     }
 
+    /**
+     * Writes a header entry (Start Log, Scene Snapshot, End Log) directly to the
+     * file without adding it to the undo/redo index.
+     */
+    private void writeHeaderEntry(LogEvent event, Map<String, String> fields) {
+        LogEntry entry = new LogEntry(event, fields, Instant.now());
+        try {
+            writer.write(entry);
+        } catch (IOException e) {
+            System.err.println("[LogController] Failed to write header entry: " + e.getMessage());
+        }
+    }
+
     private void writeStartLog(SceneManager sceneManager, SceneState activeState) {
         Map<String, String> header = new LinkedHashMap<>();
         header.put("Time", DATE_FMT.format(Instant.now()));
@@ -334,7 +348,7 @@ public final class LogController {
         }
         ids.append("]");
         header.put("Scenes", ids.toString());
-        writeEntry(LogEvent.START_LOG, header);
+        writeHeaderEntry(LogEvent.START_LOG, header);
 
         for (SceneEntry entry : sceneManager.getScenes()) {
             SceneState state = entry.getId().equals(activeSceneId)
@@ -363,7 +377,7 @@ public final class LogController {
                     + " | y=" + fmt(c.getYFraction())
                     + " | onMap=" + c.isOnMap());
         }
-        writeEntry(LogEvent.SCENE_SNAPSHOT, f);
+        writeHeaderEntry(LogEvent.SCENE_SNAPSHOT, f);
     }
 
     private static boolean isPlayer(Entity entity) {

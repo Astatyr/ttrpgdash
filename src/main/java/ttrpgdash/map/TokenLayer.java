@@ -5,6 +5,8 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 import javafx.scene.canvas.GraphicsContext;
 import ttrpgdash.entity.Entity;
@@ -52,15 +54,15 @@ public class TokenLayer {
     private Entity pendingEntity = null;
 
     /** Fired after a token is successfully placed on the map. */
-    private java.util.function.Consumer<Token> onTokenPlaced;
+    private Consumer<Token> onTokenPlaced;
     /** Fired after a drag-drop; carries the token and {fromX, fromY, toX, toY}. */
-    private java.util.function.BiConsumer<Token, double[]> onTokenMoved;
+    private BiConsumer<Token, double[]> onTokenMoved;
 
-    public void setOnTokenPlaced(java.util.function.Consumer<Token> handler) {
+    public void setOnTokenPlaced(Consumer<Token> handler) {
         this.onTokenPlaced = handler;
     }
 
-    public void setOnTokenMoved(java.util.function.BiConsumer<Token, double[]> handler) {
+    public void setOnTokenMoved(BiConsumer<Token, double[]> handler) {
         this.onTokenMoved = handler;
     }
 

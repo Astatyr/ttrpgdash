@@ -121,7 +121,7 @@ public final class MusicPanel extends VBox {
         Button removeBtn = makeSmallBtn("×");
         removeBtn.setOnAction(e -> {
             musicController.stop(track.getId());
-            sceneState.getMusicTracks().remove(track);
+            sceneState.removeMusicTrack(track);
             if (onMusicChanged != null) { onMusicChanged.run(); }
             refresh(sceneState);
         });
@@ -160,7 +160,7 @@ public final class MusicPanel extends VBox {
         String id = name.toLowerCase().replaceAll("[^a-z0-9]", "") + "_"
                 + Long.toHexString(System.currentTimeMillis());
         MusicTrack track = new MusicTrack(id, name, relativePath);
-        sceneState.getMusicTracks().add(track);
+        sceneState.addMusicTrack(track);
         if (onMusicChanged != null) { onMusicChanged.run(); }
         refresh(sceneState);
     }

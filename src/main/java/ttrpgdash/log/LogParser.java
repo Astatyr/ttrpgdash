@@ -3,15 +3,14 @@ package ttrpgdash.log;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Instant;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Reads a session log file and parses it into a list of {@link LogEntry} objects.
  * Entries that reference unknown event types are silently skipped.
+ * Delegates per-entry parsing to {@link LogWriter#parseSingle(String)} to avoid
+ * duplicating the format logic.
  */
 public final class LogParser {
 
@@ -22,30 +21,26 @@ public final class LogParser {
         List<String> lines = Files.readAllLines(path);
         List<LogEntry> entries = new ArrayList<>();
 
-        LogEvent currentEvent = null;
-        Map<String, String> currentFields = new LinkedHashMap<>();
+        StringBuilder current = new StringBuilder();
 
         for (String line : lines) {
-            if (line.startsWith("# ")) {
-                if (currentEvent != null) {
-                    entries.add(new LogEntry(currentEvent, currentFields, Instant.now()));
-                    currentFields = new LinkedHashMap<>();
+            if (line.startsWith("# ") && current.length() > 0) {
+                // Flush previous entry block
+                LogEntry entry = LogWriter.parseSingle(current.toString());
+                if (entry != null) {
+                    entries.add(entry);
                 }
-                String header = line.substring(2).trim().toUpperCase().replace(" ", "_");
-                try {
-                    currentEvent = LogEvent.valueOf(header);
-                } catch (IllegalArgumentException e) {
-                    currentEvent = null;
-                }
-            } else if (currentEvent != null && line.contains(": ")) {
-                int colon = line.indexOf(": ");
-                currentFields.put(line.substring(0, colon).trim(),
-                        line.substring(colon + 2).trim());
+                current.setLength(0);
             }
+            current.append(line).append('\n');
         }
 
-        if (currentEvent != null) {
-            entries.add(new LogEntry(currentEvent, currentFields, Instant.now()));
+        // Flush final block
+        if (current.length() > 0) {
+            LogEntry entry = LogWriter.parseSingle(current.toString());
+            if (entry != null) {
+                entries.add(entry);
+            }
         }
 
         return entries;

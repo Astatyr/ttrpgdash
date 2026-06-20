@@ -1,6 +1,7 @@
 package ttrpgdash.scene;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,7 +21,7 @@ import ttrpgdash.util.JsonStateManager;
  * SceneState is loaded once at startup by JsonStateManager and kept in memory.
  * The UI reads from and writes to this object; it never touches state.json directly.
  */
-public class SceneState {
+public final class SceneState {
 
     /** Absolute path to the currently loaded map image. Null = no map loaded. */
     private String mapImagePath;
@@ -58,6 +59,23 @@ public class SceneState {
         this.musicTracks = new ArrayList<>();
     }
 
+    /**
+     * Factory method for JsonStateManager: builds a fully populated SceneState
+     * from already-normalised load data without triggering any save() calls.
+     */
+    public static SceneState fromLoad(String mapPath, double mapWidthInFeet,
+                                      List<PlayerEntity> players,
+                                      List<CharacterEntity> characters,
+                                      List<MusicTrack> musicTracks) {
+        SceneState s = new SceneState();
+        s.mapImagePath = mapPath;
+        s.mapWidthInFeet = mapWidthInFeet;
+        s.players.addAll(players);
+        s.characters.addAll(characters);
+        s.musicTracks.addAll(musicTracks);
+        return s;
+    }
+
     public String getMapImagePath() {
         return mapImagePath;
     }
@@ -76,8 +94,9 @@ public class SceneState {
         save();
     }
 
+    /** Returns an unmodifiable view of the players list. Use addPlayer/removePlayer to mutate. */
     public List<PlayerEntity> getPlayers() {
-        return players;
+        return Collections.unmodifiableList(players);
     }
 
     /**
@@ -96,8 +115,9 @@ public class SceneState {
         save();
     }
 
+    /** Returns an unmodifiable view of the characters list. Use addCharacter/removeCharacter to mutate. */
     public List<CharacterEntity> getCharacters() {
-        return characters;
+        return Collections.unmodifiableList(characters);
     }
 
     /**
@@ -127,10 +147,6 @@ public class SceneState {
         return all;
     }
 
-    /**
-     * Finds any entity by ID regardless of type.
-     * Returns an Optional — always check isPresent() before using.
-     */
     /**
      * Finds any entity by display name regardless of type.
      * Returns the first match — names are not guaranteed unique.
@@ -195,8 +211,25 @@ public class SceneState {
         save();
     }
 
+    /** Returns an unmodifiable view of the music tracks list. Use addMusicTrack/removeMusicTrack to mutate. */
     public List<MusicTrack> getMusicTracks() {
-        return musicTracks;
+        return Collections.unmodifiableList(musicTracks);
+    }
+
+    /**
+     * Adds a music track to the scene and persists the change.
+     */
+    public void addMusicTrack(MusicTrack track) {
+        musicTracks.add(track);
+        save();
+    }
+
+    /**
+     * Removes a music track from the scene and persists the change.
+     */
+    public void removeMusicTrack(MusicTrack track) {
+        musicTracks.remove(track);
+        save();
     }
 
     /**

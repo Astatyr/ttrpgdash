@@ -40,7 +40,7 @@ public class MusicTrack {
     }
 
     public void setVolume(double volume) {
-        this.volume = volume;
+        this.volume = Math.max(0.0, Math.min(1.0, volume));
     }
 
     public boolean isLoop() {

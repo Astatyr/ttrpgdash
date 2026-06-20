@@ -24,7 +24,7 @@ import ttrpgdash.util.FileHelper;
  *   onTokenRightClick — fires when the user right-clicks a token; UI builds the menu
  *   onStatusMessage  — fires with human-readable status text after operations
  */
-public class MapController {
+public final class MapController {
 
     private final Stage stage;
     private SceneState sceneState;
@@ -299,7 +299,6 @@ public class MapController {
      */
     public void setNamesVisible(boolean visible) {
         mapCanvas.setNamesVisible(visible);
-        fireStateChanged();
     }
 
     /**
@@ -307,7 +306,6 @@ public class MapController {
      */
     public void setStatusVisible(boolean visible) {
         mapCanvas.setStatusVisible(visible);
-        fireStateChanged();
     }
 
     /**

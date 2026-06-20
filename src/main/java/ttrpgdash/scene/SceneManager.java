@@ -1,6 +1,7 @@
 package ttrpgdash.scene;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -8,7 +9,7 @@ import java.util.Optional;
  * Runtime manager for the ordered list of scenes and which one is active.
  * Persisted as data/scenes.json (metadata only; full scene data is per-file).
  */
-public class SceneManager {
+public final class SceneManager {
 
     private List<SceneEntry> scenes;
     private String activeSceneId;
@@ -22,7 +23,7 @@ public class SceneManager {
     }
 
     public List<SceneEntry> getScenes() {
-        return scenes;
+        return Collections.unmodifiableList(scenes);
     }
 
     public String getActiveSceneId() {

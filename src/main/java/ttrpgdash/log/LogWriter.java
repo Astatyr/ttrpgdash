@@ -8,6 +8,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -20,13 +21,16 @@ import java.util.Map;
  *   - {@link #truncateTo(long)} physically shortens the file, deleting entries after
  *     a given offset (used when a new action discards redo history).
  *   - {@link #readEntryAt(long)} seeks to a recorded offset and parses one entry.
+ *
+ * The shared {@link #parseSingle(String)} method is package-private so
+ * {@link LogParser} can reuse the same parsing logic without duplication.
  */
 public final class LogWriter {
 
     private FileChannel channel;
 
     /**
-     * Opens (or creates) the log file, truncating any existing content.
+     * Opens (or creates) the log file.
      * Creates parent directories if needed.
      */
     public void open(Path path) throws IOException {
@@ -99,6 +103,7 @@ public final class LogWriter {
     private String format(LogEntry entry) {
         StringBuilder sb = new StringBuilder();
         sb.append("# ").append(toHeaderName(entry.getEvent())).append('\n');
+        sb.append("Timestamp: ").append(entry.getTimestamp().toString()).append('\n');
         for (var field : entry.getFields().entrySet()) {
             sb.append(field.getKey()).append(": ").append(field.getValue()).append('\n');
         }
@@ -106,7 +111,13 @@ public final class LogWriter {
         return sb.toString();
     }
 
-    private LogEntry parseSingle(String text) {
+    /**
+     * Parses a single log entry block (the text between two blank lines).
+     * Extracts and removes the {@code Timestamp:} line for the entry timestamp;
+     * all remaining key-value lines become the fields map.
+     * Returns null if no recognised event header is found.
+     */
+    static LogEntry parseSingle(String text) {
         LogEvent event = null;
         Map<String, String> fields = new LinkedHashMap<>();
         for (String line : text.split("\n")) {
@@ -127,10 +138,17 @@ public final class LogWriter {
         if (event == null) {
             return null;
         }
-        return new LogEntry(event, fields, java.time.Instant.now());
+        Instant timestamp = Instant.now();
+        String tsValue = fields.remove("Timestamp");
+        if (tsValue != null) {
+            try {
+                timestamp = Instant.parse(tsValue);
+            } catch (Exception ignored) { }
+        }
+        return new LogEntry(event, fields, timestamp);
     }
 
-    private String toHeaderName(LogEvent event) {
+    private static String toHeaderName(LogEvent event) {
         String[] parts = event.name().split("_");
         StringBuilder sb = new StringBuilder();
         for (String part : parts) {

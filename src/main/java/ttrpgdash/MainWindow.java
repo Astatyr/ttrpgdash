@@ -22,7 +22,9 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.paint.Color;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import java.io.File;
 import ttrpgdash.entity.Entity;
 import ttrpgdash.entity.SidebarPanel;
 import ttrpgdash.entity.StatusEffect;
@@ -34,6 +36,7 @@ import ttrpgdash.map.MapController;
 import ttrpgdash.map.Token;
 import ttrpgdash.player.PlayerView;
 import ttrpgdash.scene.SceneController;
+import ttrpgdash.scene.SceneEntry;
 import ttrpgdash.scene.SceneManager;
 import ttrpgdash.scene.ScenePanel;
 import ttrpgdash.scene.SceneState;
@@ -154,7 +157,7 @@ public class MainWindow {
         panel.setOnSceneMove(sceneController::moveScene);
         panel.setOnSceneRename((id, newName) -> {
             String oldName = sceneController.getSceneManager()
-                    .getById(id).map(ttrpgdash.scene.SceneEntry::getName).orElse("Unknown");
+                    .getById(id).map(SceneEntry::getName).orElse("Unknown");
             logController.logRenameScene(id, oldName, newName);
             sceneController.renameScene(id, newName);
         });
@@ -386,15 +389,15 @@ public class MainWindow {
     }
 
     private void loadLogFromFile() {
-        javafx.stage.FileChooser chooser = new javafx.stage.FileChooser();
+        FileChooser chooser = new FileChooser();
         chooser.setTitle("Select Session Log");
         chooser.getExtensionFilters().add(
-                new javafx.stage.FileChooser.ExtensionFilter("Log files", "*.log"));
-        java.io.File logsDir = new java.io.File("logs");
+                new FileChooser.ExtensionFilter("Log files", "*.log"));
+        File logsDir = new File("logs");
         if (logsDir.exists() && logsDir.isDirectory()) {
             chooser.setInitialDirectory(logsDir);
         }
-        java.io.File selected = chooser.showOpenDialog(stage);
+        File selected = chooser.showOpenDialog(stage);
         if (selected == null) {
             return;
         }

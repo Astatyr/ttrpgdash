@@ -67,6 +67,10 @@ public class SceneStateManager {
                     manager.addScene(GSON.fromJson(el, SceneEntry.class));
                 }
             }
+            // Guard: if activeSceneId is missing but scenes exist, default to the first scene
+            if (manager.getActiveSceneId() == null && !manager.getScenes().isEmpty()) {
+                manager.setActiveSceneId(manager.getScenes().get(0).getId());
+            }
             return manager;
         } catch (IOException e) {
             System.err.println("[SceneStateManager] Failed to load master: " + e.getMessage());

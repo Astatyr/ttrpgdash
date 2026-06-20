@@ -1,5 +1,8 @@
 package ttrpgdash.scene;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.function.Consumer;
 
 import ttrpgdash.entity.CharacterEntity;
@@ -129,7 +132,11 @@ public final class SceneController {
         }
         sceneManager.removeScene(id);
         SceneStateManager.saveMaster(sceneManager);
-        // TODO: delete data/scenes/{id}.json from disk (see TODO file — Scene cleanup)
+        try {
+            Files.deleteIfExists(Paths.get(SceneStateManager.scenePath(id)));
+        } catch (IOException e) {
+            System.err.println("[SceneController] Failed to delete scene file: " + e.getMessage());
+        }
         if (wasActive) {
             switchToScene(sceneManager.getScenes().get(0).getId());
         } else {
@@ -243,6 +250,10 @@ public final class SceneController {
         int order = sceneManager.getScenes().size();
         sceneManager.addScene(new SceneEntry(sceneId, sceneName, order));
         SceneStateManager.saveMaster(sceneManager);
+        // Ensure the scene file exists on disk before switching to it
+        if (!Files.exists(Paths.get(SceneStateManager.scenePath(sceneId)))) {
+            SceneStateManager.createNewScene(sceneId).save();
+        }
         switchToScene(sceneId);
     }
 

@@ -77,10 +77,6 @@ public abstract class Entity {
         return id;
     }
 
-    public void setId(String id) {
-        this.id = id;
-    }
-
     public String getName() {
         return name;
     }
@@ -118,7 +114,7 @@ public abstract class Entity {
     }
 
     public void setXFraction(double x) {
-        this.xFraction = x;
+        this.xFraction = Math.max(0.0, Math.min(1.0, x));
     }
 
     public double getYFraction() {
@@ -126,7 +122,7 @@ public abstract class Entity {
     }
 
     public void setYFraction(double y) {
-        this.yFraction = y;
+        this.yFraction = Math.max(0.0, Math.min(1.0, y));
     }
 
     public boolean isOnMap() {

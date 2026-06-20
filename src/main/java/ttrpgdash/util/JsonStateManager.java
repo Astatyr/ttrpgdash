@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -14,21 +16,20 @@ import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 
 import ttrpgdash.entity.CharacterEntity;
-import ttrpgdash.entity.Entity;
 import ttrpgdash.entity.PlayerEntity;
 import ttrpgdash.music.MusicTrack;
 import ttrpgdash.scene.SceneState;
 
 /**
- * Handles reading and writing of data/state.json.
+ * Handles reading and writing of scene state JSON files.
  *
  * Uses Gson with a custom deserialiser to handle the Entity polymorphism
  * (PlayerEntity vs CharacterEntity share the same list structure in JSON
  * but need to be instantiated as the correct subclass on load).
  *
  * Usage:
- *   SceneState state = JsonStateManager.load();   // on startup
- *   JsonStateManager.save(state);                // called automatically by SceneState mutators
+ *   SceneState state = JsonStateManager.load(path);   // on startup / scene switch
+ *   JsonStateManager.save(state, path);               // called automatically by SceneState mutators
  */
 public class JsonStateManager {
 
@@ -108,67 +109,51 @@ public class JsonStateManager {
             String json = Files.readString(path);
             JsonObject root = JsonParser.parseString(json).getAsJsonObject();
 
-            SceneState state = new SceneState();
+            String mapPath = null;
+            if (root.has("mapImagePath") && !root.get("mapImagePath").isJsonNull()) {
+                mapPath = FileHelper.normalizeToRelative(root.get("mapImagePath").getAsString());
+            }
+            double mapWidthInFeet = root.has("mapWidthInFeet")
+                    ? root.get("mapWidthInFeet").getAsDouble() : 100.0;
 
-            setFieldDirectly(state, root);
-
+            List<PlayerEntity> players = new ArrayList<>();
             if (root.has("players")) {
                 for (JsonElement el : root.getAsJsonArray("players")) {
                     PlayerEntity p = GSON.fromJson(el, PlayerEntity.class);
-                    state.getPlayers().add(p);
+                    p.setAvatarPath(FileHelper.normalizeToRelative(p.getAvatarPath()));
+                    p.setDetailsPath(FileHelper.normalizeToRelative(p.getDetailsPath()));
+                    players.add(p);
                 }
             }
 
+            List<CharacterEntity> characters = new ArrayList<>();
             if (root.has("characters")) {
                 for (JsonElement el : root.getAsJsonArray("characters")) {
                     CharacterEntity c = GSON.fromJson(el, CharacterEntity.class);
-                    state.getCharacters().add(c);
+                    c.setAvatarPath(FileHelper.normalizeToRelative(c.getAvatarPath()));
+                    c.setDetailsPath(FileHelper.normalizeToRelative(c.getDetailsPath()));
+                    characters.add(c);
                 }
             }
 
+            List<MusicTrack> musicTracks = new ArrayList<>();
             if (root.has("musicTracks")) {
                 for (JsonElement el : root.getAsJsonArray("musicTracks")) {
-                    state.getMusicTracks().add(GSON.fromJson(el, MusicTrack.class));
+                    musicTracks.add(GSON.fromJson(el, MusicTrack.class));
                 }
             }
 
-            for (Entity e : state.getAllEntities()) {
-                e.setAvatarPath(FileHelper.normalizeToRelative(e.getAvatarPath()));
-                e.setDetailsPath(FileHelper.normalizeToRelative(e.getDetailsPath()));
-            }
-            save(state, filePath);
+            SceneState state = SceneState.fromLoad(mapPath, mapWidthInFeet,
+                    players, characters, musicTracks);
 
             System.out.println("[JsonStateManager] Loaded state from " + filePath + ": "
-                    + state.getPlayers().size() + " players, "
-                    + state.getCharacters().size() + " characters.");
+                    + players.size() + " players, "
+                    + characters.size() + " characters.");
             return state;
 
         } catch (IOException | JsonParseException e) {
             System.err.println("[JsonStateManager] Failed to load state: " + e.getMessage());
             return new SceneState();
-        }
-    }
-
-    /**
-     * Sets mapImagePath and mapWidthInFeet directly on a fresh SceneState
-     * during load — avoids triggering save() before the state is fully built.
-     */
-    private static void setFieldDirectly(SceneState state, JsonObject root) {
-        try {
-            var pathField = SceneState.class.getDeclaredField("mapImagePath");
-            pathField.setAccessible(true);
-            if (root.has("mapImagePath") && !root.get("mapImagePath").isJsonNull()) {
-                pathField.set(state,
-                        FileHelper.normalizeToRelative(root.get("mapImagePath").getAsString()));
-            }
-
-            var feetField = SceneState.class.getDeclaredField("mapWidthInFeet");
-            feetField.setAccessible(true);
-            if (root.has("mapWidthInFeet")) {
-                feetField.set(state, root.get("mapWidthInFeet").getAsDouble());
-            }
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            System.err.println("[JsonStateManager] Reflection error during load: " + e.getMessage());
         }
     }
 }

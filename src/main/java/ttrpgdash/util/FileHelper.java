@@ -18,9 +18,9 @@ import javafx.stage.Stage;
 public class FileHelper {
 
     public static final String ASSETS_DIR = "assets";
-    public static final String CHARACTERS_DIR = ASSETS_DIR + File.separator + "characters";
-    public static final String MAPS_DIR = ASSETS_DIR + File.separator + "maps";
-    public static final String MUSIC_DIR = ASSETS_DIR + File.separator + "music";
+    public static final String CHARACTERS_DIR = ASSETS_DIR + "/characters";
+    public static final String MAPS_DIR = ASSETS_DIR + "/maps";
+    public static final String MUSIC_DIR = ASSETS_DIR + "/music";
 
     private static File safeDir(File dir, File fallback) {
         if (dir != null && dir.exists() && dir.isDirectory()) {
@@ -144,11 +144,11 @@ public class FileHelper {
     }
 
     public static String avatarPathFor(String folder) {
-        return folder + File.separator + "Avatar.png";
+        return folder + "/Avatar.png";
     }
 
     public static String detailsPathFor(String folder) {
-        return folder + File.separator + "Details.png";
+        return folder + "/Details.png";
     }
 
     public static boolean fileExists(String path) {
