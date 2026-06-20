@@ -110,7 +110,6 @@ public final class LogController {
         enabled = false;
     }
 
-    // ── Undo / Redo ───────────────────────────────────────────────────────────
 
     /**
      * Returns true if there is an action entry at the current pointer to reverse.
@@ -162,7 +161,6 @@ public final class LogController {
         }
     }
 
-    // ── Log methods ───────────────────────────────────────────────────────────
 
     /** Records a scene switch, storing both the previous and next scene IDs for undo. */
     public void onSceneSwitched(String newSceneId) {
@@ -313,7 +311,6 @@ public final class LogController {
         writeEntry(LogEvent.RENAME_SCENE, f);
     }
 
-    // ── Private helpers ───────────────────────────────────────────────────────
 
     /**
      * Writes an action entry: truncates superseded redo history, appends to file,

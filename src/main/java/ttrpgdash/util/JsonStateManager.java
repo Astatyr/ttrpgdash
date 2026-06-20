@@ -18,6 +18,7 @@ import com.google.gson.JsonParser;
 import ttrpgdash.entity.CharacterEntity;
 import ttrpgdash.entity.PlayerEntity;
 import ttrpgdash.music.MusicTrack;
+import ttrpgdash.scene.ScenePersistenceException;
 import ttrpgdash.scene.SceneState;
 
 /**
@@ -79,13 +80,28 @@ public class JsonStateManager {
     }
 
     /**
-     * Deserialises SceneState from the given file path, or returns a fresh state if missing.
+     * Deserialises SceneState from the given path, or returns a fresh state if the file is
+     * missing. If the file exists but is corrupted, logs and returns a fresh state.
+     * Use {@link #loadOrThrow(String)} when callers need to distinguish corruption from absence.
      */
     public static SceneState load(String filePath) {
+        try {
+            return loadOrThrow(filePath);
+        } catch (ScenePersistenceException e) {
+            System.err.println("[JsonStateManager] " + e.getMessage() + " — starting fresh.");
+            return new SceneState();
+        }
+    }
+
+    /**
+     * Deserialises SceneState from the given path, or returns a fresh state if the file is
+     * missing. Throws {@link ScenePersistenceException} if the file exists but cannot be parsed,
+     * allowing callers to distinguish a corrupted file from a legitimately absent one.
+     */
+    public static SceneState loadOrThrow(String filePath) throws ScenePersistenceException {
         Path path = Paths.get(filePath);
 
         if (!Files.exists(path)) {
-            System.out.println("[JsonStateManager] No file found at " + filePath + " — starting fresh.");
             return new SceneState();
         }
 
@@ -135,9 +151,12 @@ public class JsonStateManager {
                     + characters.size() + " characters.");
             return state;
 
-        } catch (IOException | JsonParseException e) {
-            System.err.println("[JsonStateManager] Failed to load state: " + e.getMessage());
-            return new SceneState();
+        } catch (JsonParseException e) {
+            throw new ScenePersistenceException(
+                    "Scene file is corrupted at '" + filePath + "': " + e.getMessage(), e);
+        } catch (IOException e) {
+            throw new ScenePersistenceException(
+                    "Failed to read scene file '" + filePath + "': " + e.getMessage(), e);
         }
     }
 }

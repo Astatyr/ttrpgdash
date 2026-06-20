@@ -17,6 +17,7 @@ import ttrpgdash.entity.CharacterEntity;
 import ttrpgdash.entity.PlayerEntity;
 import ttrpgdash.log.LogEntry;
 import ttrpgdash.log.LogEvent;
+import ttrpgdash.log.LogParseException;
 import ttrpgdash.log.LogParser;
 import ttrpgdash.scene.SceneState;
 import ttrpgdash.util.FileHelper;
@@ -71,10 +72,22 @@ public final class LogReplayController {
                 break;
             }
         }
-        this.initialActiveSceneId = startScene != null ? startScene : "";
-        this.activeSceneId = this.initialActiveSceneId;
+        if (startScene == null) {
+            throw new LogParseException(
+                    "Log file has no Start Log header — may be empty or from an older format: "
+                    + logFile.getFileName());
+        }
+        this.initialActiveSceneId = startScene;
+        this.activeSceneId = startScene;
 
         loadSceneStates();
+
+        if (sceneStates.isEmpty()) {
+            throw new ReplayException(
+                    "No scene snapshot files found in log folder '" + logFolder
+                    + "'. The log may have been recorded with an older version that did not "
+                    + "save snapshots alongside the log file.");
+        }
 
         for (LogEntry entry : all) {
             LogEvent ev = entry.getEvent();
@@ -85,7 +98,7 @@ public final class LogReplayController {
         }
     }
 
-    // ── Queries ───────────────────────────────────────────────────────────────
+
 
     /** Returns the active scene's state, or null if the scene ID is unrecognised. */
     public SceneState getActiveState() {
@@ -119,7 +132,7 @@ public final class LogReplayController {
         this.onStepChanged = handler;
     }
 
-    // ── Navigation ────────────────────────────────────────────────────────────
+
 
     /**
      * Resets to the snapshot state and replays actions 0..{@code step}.
@@ -183,7 +196,7 @@ public final class LogReplayController {
         return playTimer != null && playTimer.getStatus() == Animation.Status.RUNNING;
     }
 
-    // ── Private helpers ───────────────────────────────────────────────────────
+
 
     private void loadSceneStates() {
         if (logFolder == null || !Files.isDirectory(logFolder)) {
@@ -216,32 +229,20 @@ public final class LogReplayController {
             return;
         }
         switch (entry.getEvent()) {
-
-        case MOVE_PLAYER:
-        case MOVE_CHARACTER:
-            state.findByName(entry.get("Name")).ifPresent(e -> {
-                e.setXFraction(Double.parseDouble(entry.get("X")));
-                e.setYFraction(Double.parseDouble(entry.get("Y")));
-            });
-            break;
-
-        case PLACE_PLAYER:
-        case PLACE_CHARACTER:
-            state.findByName(entry.get("Name")).ifPresent(e -> {
-                e.setOnMap(true);
-                e.setXFraction(Double.parseDouble(entry.get("X")));
-                e.setYFraction(Double.parseDouble(entry.get("Y")));
-            });
-            break;
-
-        case REMOVE_FROM_MAP:
-            state.findByName(entry.get("Name")).ifPresent(e -> {
-                e.setOnMap(false);
-                e.setMountedOnId(null);
-            });
-            break;
-
-        case ADD_PLAYER: {
+        case MOVE_PLAYER, MOVE_CHARACTER -> state.findByName(entry.get("Name")).ifPresent(e -> {
+            e.setXFraction(Double.parseDouble(entry.get("X")));
+            e.setYFraction(Double.parseDouble(entry.get("Y")));
+        });
+        case PLACE_PLAYER, PLACE_CHARACTER -> state.findByName(entry.get("Name")).ifPresent(e -> {
+            e.setOnMap(true);
+            e.setXFraction(Double.parseDouble(entry.get("X")));
+            e.setYFraction(Double.parseDouble(entry.get("Y")));
+        });
+        case REMOVE_FROM_MAP -> state.findByName(entry.get("Name")).ifPresent(e -> {
+            e.setOnMap(false);
+            e.setMountedOnId(null);
+        });
+        case ADD_PLAYER -> {
             String name = entry.get("Name");
             double size = Double.parseDouble(entry.get("Size"));
             PlayerEntity p = new PlayerEntity(FileHelper.generateId(name), name, size);
@@ -250,10 +251,8 @@ public final class LogReplayController {
                 p.setAvatarPath(av);
             }
             state.addPlayer(p);
-            break;
         }
-
-        case ADD_CHARACTER: {
+        case ADD_CHARACTER -> {
             String name = entry.get("Name");
             double size = Double.parseDouble(entry.get("Size"));
             CharacterEntity c = new CharacterEntity(FileHelper.generateId(name), name, size);
@@ -262,53 +261,35 @@ public final class LogReplayController {
                 c.setAvatarPath(av);
             }
             state.addCharacter(c);
-            break;
         }
-
-        case REMOVE_PLAYER:
+        case REMOVE_PLAYER ->
             state.findByName(entry.get("Name")).ifPresent(e -> state.removePlayer(e.getId()));
-            break;
-
-        case REMOVE_CHARACTER:
+        case REMOVE_CHARACTER ->
             state.findByName(entry.get("Name")).ifPresent(e -> state.removeCharacter(e.getId()));
-            break;
-
-        case ADD_STATUS_EFFECT:
+        case ADD_STATUS_EFFECT ->
             state.findByName(entry.get("Name"))
                  .ifPresent(e -> e.addStatusEffect(entry.get("Status")));
-            break;
-
-        case REMOVE_STATUS_EFFECT:
+        case REMOVE_STATUS_EFFECT ->
             state.findByName(entry.get("Name"))
                  .ifPresent(e -> e.removeStatusEffect(entry.get("Status")));
-            break;
-
-        case MOUNT:
-            state.findByName(entry.get("Mount")).ifPresent(mount ->
-                state.findByName(entry.get("Rider")).ifPresent(rider ->
-                    rider.setMountedOnId(mount.getId())));
-            break;
-
-        case DISMOUNT:
+        case MOUNT -> state.findByName(entry.get("Mount")).ifPresent(mount ->
+            state.findByName(entry.get("Rider")).ifPresent(rider ->
+                rider.setMountedOnId(mount.getId())));
+        case DISMOUNT ->
             state.findByName(entry.get("Rider")).ifPresent(r -> r.setMountedOnId(null));
-            break;
-
-        case ADD_MAP:
+        case ADD_MAP -> {
             state.setMapImagePath(entry.get("Map"));
             lastHint = RefreshHint.MAP_RELOAD;
-            break;
-
-        case CHANGE_MAP_SIZE:
+        }
+        case CHANGE_MAP_SIZE -> {
             state.setMapWidthInFeet(Double.parseDouble(entry.get("New Size In Feet")));
             lastHint = RefreshHint.MAP_RELOAD;
-            break;
-
-        case SWITCH_SCENE:
+        }
+        case SWITCH_SCENE -> {
             activeSceneId = entry.get("Scene ID");
             lastHint = RefreshHint.SCENE_SWITCH;
-            break;
-
-        case ADD_SCENE: {
+        }
+        case ADD_SCENE -> {
             String sceneId = entry.get("Scene ID");
             if (!sceneStates.containsKey(sceneId)) {
                 Path sceneFile = logFolder.resolve(sceneId + ".json");
@@ -319,24 +300,19 @@ public final class LogReplayController {
                 sceneStates.put(sceneId, ns);
             }
             lastHint = RefreshHint.SCENE_SWITCH;
-            break;
         }
-
-        case DELETE_SCENE: {
+        case DELETE_SCENE -> {
             String sceneId = entry.get("Scene ID");
             sceneStates.remove(sceneId);
             if (sceneId.equals(activeSceneId)) {
                 activeSceneId = initialActiveSceneId;
                 lastHint = RefreshHint.SCENE_SWITCH;
             }
-            break;
         }
-
-        case RENAME_SCENE:
-            break; // name change has no visible effect in the replay canvas
-
-        default:
-            break;
+        case RENAME_SCENE -> { // name change has no visible effect in the replay canvas
+        }
+        default -> { // no-op for unrecognised future events
+        }
         }
     }
 

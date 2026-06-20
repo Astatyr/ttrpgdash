@@ -12,7 +12,6 @@ import javafx.scene.control.Slider;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
-import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import ttrpgdash.map.MapCanvas;
@@ -23,21 +22,22 @@ import ttrpgdash.scene.SceneState;
 /**
  * A standalone window that plays back a logged session step by step.
  *
- * Multiple instances can coexist, each bound to a different log file.
- * Layout mirrors {@link ttrpgdash.player.PlayerView}: map fills the centre,
- * a player bar sits at the bottom, and replay controls (play/pause + slider)
- * sit below the player bar.
+ * Layout:
+ *   outer BorderPane
+ *     center — mapArea (inner BorderPane: map in center, playerBar at bottom)
+ *     bottom — controlStrip (always visible, unconditional)
  *
+ * Multiple instances can coexist, each bound to a different log file.
  * Use {@link #open(Path, Stage)} to construct and show the window.
  */
 public final class ReplayWindow {
 
     private final LogReplayController controller;
     private final BorderPane content = new BorderPane();
+    private final BorderPane mapArea = new BorderPane();
     private final Stage stage;
 
     private final HBox controlStrip;
-    private final VBox bottomContainer = new VBox();
 
     private MapCanvas mapCanvas;
     private PlayerBar playerBar;
@@ -52,8 +52,9 @@ public final class ReplayWindow {
         controller = new LogReplayController(logFile);
 
         content.setStyle("-fx-background-color: #0d0d1a;");
+        mapArea.setStyle("-fx-background-color: #0d0d1a;");
 
-        // ── Controls ──────────────────────────────────────────────────────────
+
         playBtn = new Button("▶");
         playBtn.setStyle("-fx-background-color: #2a2a4a; -fx-text-fill: #6fa8dc; "
                 + "-fx-font-size: 14px; -fx-padding: 4 14 4 14; -fx-cursor: hand;");
@@ -81,9 +82,11 @@ public final class ReplayWindow {
         controlStrip.setStyle("-fx-background-color: #0d0d1a;"
                 + " -fx-border-color: #1a1a3a; -fx-border-width: 1 0 0 0;");
 
-        content.setBottom(bottomContainer);
+        // controlStrip sits at outer bottom — unconditionally always visible
+        content.setCenter(mapArea);
+        content.setBottom(controlStrip);
 
-        // ── Stage ─────────────────────────────────────────────────────────────
+
         stage = new Stage();
         stage.initOwner(ownerStage);
         String sessionName = logFile.getParent() != null
@@ -98,7 +101,7 @@ public final class ReplayWindow {
         stage.setMinWidth(800);
         stage.setMinHeight(520);
 
-        // ── Wire ─────────────────────────────────────────────────────────────
+
         controller.setOnStepChanged(this::handleRefresh);
 
         displayedSceneId = controller.getActiveSceneId();
@@ -120,23 +123,36 @@ public final class ReplayWindow {
 
     private void show() {
         stage.show();
-        mapCanvas.reloadFromState();
-        playerBar.refresh();
+        if (mapCanvas != null) {
+            mapCanvas.reloadFromState();
+        }
+        if (playerBar != null) {
+            playerBar.prefHeightProperty().bind(
+                    stage.getScene().heightProperty().multiply(0.18));
+            playerBar.refresh();
+        }
     }
 
-    // ── Private helpers ───────────────────────────────────────────────────────
+
 
     private void rebuildCanvas() {
         SceneState state = controller.getActiveState();
         if (state == null) {
+            System.err.println("[ReplayWindow] rebuildCanvas: getActiveState() is null"
+                    + " — activeSceneId=" + controller.getActiveSceneId());
+            mapArea.setCenter(null);
+            mapArea.setBottom(null);
             return;
         }
         displayedSceneId = controller.getActiveSceneId();
         mapCanvas = new MapCanvas(state, true);
         playerBar = new PlayerBar(state);
-        content.setCenter(mapCanvas);
-        bottomContainer.getChildren().setAll(playerBar, controlStrip);
-        playerBar.prefHeightProperty().bind(stage.heightProperty().multiply(0.18));
+        mapArea.setCenter(mapCanvas);
+        mapArea.setBottom(playerBar);
+        if (stage.isShowing()) {
+            playerBar.prefHeightProperty().bind(
+                    stage.getScene().heightProperty().multiply(0.18));
+        }
     }
 
     private void handleRefresh(RefreshHint hint) {
@@ -145,11 +161,17 @@ public final class ReplayWindow {
             rebuildCanvas();
         }
         if (hint == RefreshHint.MAP_RELOAD || hint == RefreshHint.SCENE_SWITCH) {
-            mapCanvas.reloadFromState();
+            if (mapCanvas != null) {
+                mapCanvas.reloadFromState();
+            }
         } else {
-            mapCanvas.syncTokens();
+            if (mapCanvas != null) {
+                mapCanvas.syncTokens();
+            }
         }
-        playerBar.refresh();
+        if (playerBar != null) {
+            playerBar.refresh();
+        }
         updateControls();
     }
 
