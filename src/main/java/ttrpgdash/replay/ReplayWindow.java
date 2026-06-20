@@ -95,11 +95,11 @@ public final class ReplayWindow {
         stage.setTitle("Replay — " + sessionName);
         stage.setOnCloseRequest(e -> controller.pause());
 
-        Scene scene = new Scene(content, 1280, 820);
+        Scene scene = new Scene(content, 1280, 680);
         scene.setFill(Color.rgb(13, 13, 26));
         stage.setScene(scene);
         stage.setMinWidth(800);
-        stage.setMinHeight(520);
+        stage.setMinHeight(440);
 
 
         controller.setOnStepChanged(this::handleRefresh);

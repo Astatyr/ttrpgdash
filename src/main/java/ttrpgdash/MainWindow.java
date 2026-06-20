@@ -23,6 +23,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.input.KeyCode;
 import javafx.scene.paint.Color;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
@@ -36,6 +37,7 @@ import ttrpgdash.map.MapCanvas;
 import ttrpgdash.map.MapController;
 import ttrpgdash.map.Token;
 import ttrpgdash.player.PlayerView;
+import ttrpgdash.project.ProjectManager;
 import ttrpgdash.replay.ReplayWindow;
 import ttrpgdash.scene.SceneController;
 import ttrpgdash.scene.SceneEntry;
@@ -141,6 +143,13 @@ public class MainWindow {
 
         Scene scene = new Scene(root, 1440, 800);
         scene.setFill(Color.rgb(13, 13, 26));
+        scene.setOnKeyPressed(e -> {
+            if (e.isControlDown() && e.getCode() == KeyCode.Z) {
+                performUndo();
+            } else if (e.isControlDown() && e.getCode() == KeyCode.Y) {
+                performRedo();
+            }
+        });
 
         // Defensive reset: ensure logging is always off at startup
         logController.disable();
@@ -207,38 +216,8 @@ public class MainWindow {
         MenuBar bar = new MenuBar();
         bar.setStyle("-fx-background-color: #16163a;");
 
+        // ── File ─────────────────────────────────────────────────────────────
         Menu fileMenu = new Menu("File");
-        MenuItem replayLog = new MenuItem("Replay Log…");
-        replayLog.setOnAction(e -> loadLogFromFile());
-        fileMenu.getItems().addAll(replayLog, new SeparatorMenuItem());
-
-        Menu mapMenu = new Menu("Map");
-
-        MenuItem loadMap = new MenuItem("Load Map PNG…");
-        loadMap.setOnAction(e -> mapController.browseAndLoadMap());
-
-        MenuItem setWidth = new MenuItem("Set Map Width in Feet…");
-        setWidth.setOnAction(e -> promptMapWidth());
-
-        MenuItem fitMap = new MenuItem("Fit Map to Window");
-        fitMap.setOnAction(e -> mapController.fitMap());
-
-        MenuItem clearMap = new MenuItem("Clear Map…");
-        clearMap.setOnAction(e -> mapController.clearMap());
-
-        CheckMenuItem toggleNames = new CheckMenuItem("Show Names");
-        toggleNames.setSelected(true);
-        toggleNames.setOnAction(e -> mapController.setNamesVisible(toggleNames.isSelected()));
-
-        CheckMenuItem toggleStatus = new CheckMenuItem("Show Status Effects");
-        toggleStatus.setSelected(true);
-        toggleStatus.setOnAction(e -> mapController.setStatusVisible(toggleStatus.isSelected()));
-
-        mapMenu.getItems().addAll(loadMap, setWidth, new SeparatorMenuItem(), fitMap,
-                new SeparatorMenuItem(), clearMap, new SeparatorMenuItem(),
-                toggleNames, toggleStatus);
-
-        Menu optionsMenu = new Menu("Options");
 
         CheckMenuItem enableLog = new CheckMenuItem("Enable Logging");
         enableLog.setSelected(false);
@@ -253,8 +232,15 @@ public class MainWindow {
             }
         });
 
-        MenuItem clearPositions = new MenuItem("Clear Token Positions");
-        clearPositions.setOnAction(e -> mapController.clearTokenPositions());
+        MenuItem replayLog = new MenuItem("Replay Log…");
+        replayLog.setOnAction(e -> loadLogFromFile());
+
+        MenuItem saveProject = new MenuItem("Save Project…");
+        saveProject.setOnAction(e ->
+                ProjectManager.saveProject(sceneController.getSceneManager(), stage));
+
+        MenuItem loadProject = new MenuItem("Load Project…");
+        loadProject.setDisable(true); // not yet implemented
 
         MenuItem clearAll = new MenuItem("Clear All…");
         clearAll.setOnAction(e -> {
@@ -270,9 +256,40 @@ public class MainWindow {
             });
         });
 
-        optionsMenu.getItems().addAll(enableLog, new SeparatorMenuItem(), clearPositions,
-                new SeparatorMenuItem(), clearAll);
+        fileMenu.getItems().addAll(enableLog, replayLog, new SeparatorMenuItem(),
+                saveProject, loadProject, new SeparatorMenuItem(), clearAll);
 
+        // ── Map ───────────────────────────────────────────────────────────────
+        Menu mapMenu = new Menu("Map");
+
+        MenuItem loadMap = new MenuItem("Load Map PNG…");
+        loadMap.setOnAction(e -> mapController.browseAndLoadMap());
+
+        MenuItem setWidth = new MenuItem("Set Map Width in Feet…");
+        setWidth.setOnAction(e -> promptMapWidth());
+
+        MenuItem fitMap = new MenuItem("Fit Map to Window");
+        fitMap.setOnAction(e -> mapController.fitMap());
+
+        MenuItem clearMap = new MenuItem("Clear Map…");
+        clearMap.setOnAction(e -> mapController.clearMap());
+
+        MenuItem clearPositions = new MenuItem("Clear Token Positions");
+        clearPositions.setOnAction(e -> mapController.clearTokenPositions());
+
+        CheckMenuItem toggleNames = new CheckMenuItem("Show Names");
+        toggleNames.setSelected(true);
+        toggleNames.setOnAction(e -> mapController.setNamesVisible(toggleNames.isSelected()));
+
+        CheckMenuItem toggleStatus = new CheckMenuItem("Show Status Effects");
+        toggleStatus.setSelected(true);
+        toggleStatus.setOnAction(e -> mapController.setStatusVisible(toggleStatus.isSelected()));
+
+        mapMenu.getItems().addAll(loadMap, setWidth, new SeparatorMenuItem(), fitMap,
+                new SeparatorMenuItem(), clearMap, clearPositions,
+                new SeparatorMenuItem(), toggleNames, toggleStatus);
+
+        // ── View ─────────────────────────────────────────────────────────────
         Menu viewMenu = new Menu("View");
         MenuItem openPlayerView = new MenuItem("Open Player View");
         openPlayerView.setOnAction(e -> {
@@ -283,37 +300,20 @@ public class MainWindow {
         });
         viewMenu.getItems().add(openPlayerView);
 
+        // ── Undo / Redo ───────────────────────────────────────────────────────
         Menu undoMenu = new Menu("Undo");
-        MenuItem undoAction = new MenuItem("Undo Last Action");
-        undoAction.setOnAction(e -> {
-            if (logController.canUndo()) {
-                var entry = logController.doUndo();
-                if (entry != null) {
-                    undoHandler.undo(entry);
-                    setStatus("Undone: " + entry.getEvent().name().replace('_', ' ').toLowerCase());
-                }
-            } else {
-                setStatus("Nothing to undo.");
-            }
+        undoMenu.setOnShowing(e -> {
+            undoMenu.hide();
+            performUndo();
         });
-        undoMenu.getItems().add(undoAction);
 
         Menu redoMenu = new Menu("Redo");
-        MenuItem redoAction = new MenuItem("Redo Last Action");
-        redoAction.setOnAction(e -> {
-            if (logController.canRedo()) {
-                var entry = logController.doRedo();
-                if (entry != null) {
-                    redoHandler.apply(entry);
-                    setStatus("Redone: " + entry.getEvent().name().replace('_', ' ').toLowerCase());
-                }
-            } else {
-                setStatus("Nothing to redo.");
-            }
+        redoMenu.setOnShowing(e -> {
+            redoMenu.hide();
+            performRedo();
         });
-        redoMenu.getItems().add(redoAction);
 
-        bar.getMenus().addAll(fileMenu, mapMenu, optionsMenu, viewMenu, undoMenu, redoMenu);
+        bar.getMenus().addAll(fileMenu, mapMenu, viewMenu, undoMenu, redoMenu);
         return bar;
     }
 
@@ -409,6 +409,30 @@ public class MainWindow {
             return;
         }
         ReplayWindow.open(selected.toPath(), stage);
+    }
+
+    private void performUndo() {
+        if (logController.canUndo()) {
+            var entry = logController.doUndo();
+            if (entry != null) {
+                undoHandler.undo(entry);
+                setStatus("Undone: " + entry.getEvent().name().replace('_', ' ').toLowerCase());
+            }
+        } else {
+            setStatus("Nothing to undo.");
+        }
+    }
+
+    private void performRedo() {
+        if (logController.canRedo()) {
+            var entry = logController.doRedo();
+            if (entry != null) {
+                redoHandler.apply(entry);
+                setStatus("Redone: " + entry.getEvent().name().replace('_', ' ').toLowerCase());
+            }
+        } else {
+            setStatus("Nothing to redo.");
+        }
     }
 
     private void setStatus(String message) {
