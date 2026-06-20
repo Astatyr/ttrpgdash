@@ -21,6 +21,7 @@ public class App extends Application {
     @Override
     public void start(Stage primaryStage) {
         SceneManager sceneManager = SceneStateManager.loadMaster();
+        SceneStateManager.pruneOrphanedSceneFiles(sceneManager);
         new MainWindow(sceneManager).show(primaryStage);
     }
 

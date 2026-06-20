@@ -5,6 +5,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import javafx.scene.image.Image;
+import javafx.scene.image.PixelWriter;
+import javafx.scene.image.WritableImage;
+import javafx.scene.paint.Color;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
@@ -126,6 +129,48 @@ public class FileHelper {
             System.err.println("[FileHelper] Failed to load image: " + filePath);
             return loadDefaultAvatar();
         }
+    }
+
+    /**
+     * Loads a map image from the given file path.
+     * Returns a pink-and-black checkerboard if the file is missing or fails to load,
+     * so the canvas always has a visible placeholder rather than a blank black surface.
+     */
+    public static Image loadMapImage(String filePath) {
+        if (filePath == null) {
+            return checkerboardImage(512);
+        }
+        File f = new File(filePath);
+        if (!f.exists() || !f.isFile()) {
+            System.err.println("[FileHelper] Missing map image: " + filePath);
+            return checkerboardImage(512);
+        }
+        try {
+            Image img = new Image(f.toURI().toString());
+            if (img.isError()) {
+                return checkerboardImage(512);
+            }
+            return img;
+        } catch (Exception e) {
+            return checkerboardImage(512);
+        }
+    }
+
+    /**
+     * Generates a pink-and-black checkerboard {@link WritableImage} of the given size.
+     * Used as a missing-texture placeholder for map images.
+     */
+    public static Image checkerboardImage(int size) {
+        int tile = Math.max(1, size / 8);
+        WritableImage img = new WritableImage(size, size);
+        PixelWriter pw = img.getPixelWriter();
+        Color pink = Color.color(1.0, 0.0, 0.5);
+        for (int y = 0; y < size; y++) {
+            for (int x = 0; x < size; x++) {
+                pw.setColor(x, y, ((x / tile) + (y / tile)) % 2 == 0 ? pink : Color.BLACK);
+            }
+        }
+        return img;
     }
 
     /**

@@ -36,18 +36,9 @@ public class JsonStateManager {
     /** Default save path used when no scene-specific path is configured. */
     public static final String DEFAULT_STATE_FILE = "data/state.json";
 
-    private static final String STATE_FILE = DEFAULT_STATE_FILE;
-
     private static final Gson GSON = new GsonBuilder()
             .setPrettyPrinting()
             .create();
-
-    /**
-     * Serialises the given SceneState to the default data/state.json path.
-     */
-    public static void save(SceneState state) {
-        save(state, STATE_FILE);
-    }
 
     /**
      * Serialises the given SceneState to the specified file path.
@@ -85,13 +76,6 @@ public class JsonStateManager {
         } catch (IOException e) {
             System.err.println("[JsonStateManager] Failed to save state: " + e.getMessage());
         }
-    }
-
-    /**
-     * Deserialises SceneState from data/state.json, or returns a fresh state if missing.
-     */
-    public static SceneState load() {
-        return load(STATE_FILE);
     }
 
     /**

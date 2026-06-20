@@ -111,7 +111,7 @@ public class MapCanvas extends Pane {
      * Loads a new map image from the given path and resets zoom/pan to fit.
      */
     public void loadMap(String imagePath) {
-        mapImage = FileHelper.loadImage(imagePath);
+        mapImage = FileHelper.loadMapImage(imagePath);
         if (mapImage != null && !mapImage.isError()) {
             fitMapToPane();
         }
@@ -313,9 +313,6 @@ public class MapCanvas extends Pane {
     }
 
     /**
-     * Removes the currently selected token from the map.
-     */
-    /**
      * Removes the given token from the map.
      */
     public void removeToken(Token token) {
@@ -323,6 +320,9 @@ public class MapCanvas extends Pane {
         redraw();
     }
 
+    /**
+     * Removes the currently selected token from the map. No-op if nothing is selected.
+     */
     public void removeSelectedToken() {
         Token sel = tokenLayer.getSelectedToken();
         if (sel != null) {

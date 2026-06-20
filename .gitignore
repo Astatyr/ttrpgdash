@@ -18,8 +18,21 @@ dist/
 target/
 bin/
 
-# Assets
+# Claude Code local data
+.claude/
+
+# User assets (maps, character images, music)
 assets/
 
-# Runtime
+# Runtime data — generated on first run
+data/
+
+# Logs — only README.md is tracked; session folders and other files are not
+logs/*
+!logs/README.md
+
+# Loose log files anywhere in the tree
 *.log
+
+# Generated reports
+checkstyle_errors.txt

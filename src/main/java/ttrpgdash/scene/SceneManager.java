@@ -11,7 +11,7 @@ import java.util.Optional;
  */
 public final class SceneManager {
 
-    private List<SceneEntry> scenes;
+    private final List<SceneEntry> scenes;
     private String activeSceneId;
 
     /**

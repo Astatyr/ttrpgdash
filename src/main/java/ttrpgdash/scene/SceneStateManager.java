@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -104,6 +106,42 @@ public class SceneStateManager {
         return SCENES_DIR + "/" + sceneId + ".json";
     }
 
+    /**
+     * Deletes any {@code data/scenes/{id}.json} file whose ID does not appear
+     * in the master scene list. Called once at startup after {@link #loadMaster()}.
+     */
+    public static void pruneOrphanedSceneFiles(SceneManager manager) {
+        Set<String> validIds = manager.getScenes().stream()
+                .map(SceneEntry::getId)
+                .collect(Collectors.toSet());
+        Path dir = Paths.get(SCENES_DIR);
+        if (!Files.isDirectory(dir)) {
+            return;
+        }
+        try (var stream = Files.list(dir)) {
+            stream.filter(p -> p.getFileName().toString().endsWith(".json"))
+                  .forEach(p -> {
+                      String fname = p.getFileName().toString();
+                      String id = fname.substring(0, fname.length() - 5);
+                      if (!validIds.contains(id)) {
+                          deleteOrphanedScene(p);
+                      }
+                  });
+        } catch (IOException e) {
+            System.err.println("[SceneStateManager] Failed to scan scenes dir: " + e.getMessage());
+        }
+    }
+
+    private static void deleteOrphanedScene(Path sceneFile) {
+        try {
+            Files.deleteIfExists(sceneFile);
+            System.out.println("[SceneStateManager] Pruned orphaned scene: " + sceneFile.getFileName());
+        } catch (IOException e) {
+            System.err.println("[SceneStateManager] Failed to prune " + sceneFile.getFileName()
+                    + ": " + e.getMessage());
+        }
+    }
+
     private static SceneManager createDefaultSceneManager() {
         String sceneId = newId("scene1");
         SceneEntry entry = new SceneEntry(sceneId, "Scene 1", 0);
@@ -117,6 +155,13 @@ public class SceneStateManager {
                 : new SceneState();
         state.setSavePath(scenePath(sceneId));
         JsonStateManager.save(state, scenePath(sceneId));
+
+        // Remove the legacy single-scene file now that migration is complete
+        try {
+            Files.deleteIfExists(Paths.get(JsonStateManager.DEFAULT_STATE_FILE));
+        } catch (IOException e) {
+            System.err.println("[SceneStateManager] Could not delete legacy state.json: " + e.getMessage());
+        }
 
         saveMaster(manager);
         return manager;

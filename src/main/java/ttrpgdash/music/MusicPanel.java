@@ -36,10 +36,6 @@ public final class MusicPanel extends VBox {
     private final Label header = new Label("MUSIC");
     private final VBox trackListBox = new VBox();
 
-    public void setOnMusicChanged(Runnable handler) {
-        this.onMusicChanged = handler;
-    }
-
     /**
      * Creates the music panel bound to the given controller and initial scene state.
      */
@@ -73,6 +69,10 @@ public final class MusicPanel extends VBox {
 
     public void setOwnerStage(Stage stage) {
         this.ownerStage = stage;
+    }
+
+    public void setOnMusicChanged(Runnable handler) {
+        this.onMusicChanged = handler;
     }
 
     /**
@@ -115,14 +115,18 @@ public final class MusicPanel extends VBox {
                     + "; -fx-text-fill: white; -fx-font-size: 11px;"
                     + "-fx-padding: 2 5 2 5; -fx-cursor: hand;");
             musicController.setLoop(track.getId(), track.isLoop());
-            if (onMusicChanged != null) { onMusicChanged.run(); }
+            if (onMusicChanged != null) {
+                onMusicChanged.run();
+            }
         });
 
         Button removeBtn = makeSmallBtn("×");
         removeBtn.setOnAction(e -> {
             musicController.stop(track.getId());
             sceneState.removeMusicTrack(track);
-            if (onMusicChanged != null) { onMusicChanged.run(); }
+            if (onMusicChanged != null) {
+                onMusicChanged.run();
+            }
             refresh(sceneState);
         });
 
@@ -134,7 +138,9 @@ public final class MusicPanel extends VBox {
         volumeSlider.valueProperty().addListener((obs, oldV, newV) -> {
             track.setVolume(newV.doubleValue());
             musicController.setVolume(track.getId(), newV.doubleValue());
-            if (onMusicChanged != null) { onMusicChanged.run(); }
+            if (onMusicChanged != null) {
+                onMusicChanged.run();
+            }
         });
 
         Label volLabel = new Label("vol");
@@ -161,7 +167,9 @@ public final class MusicPanel extends VBox {
                 + Long.toHexString(System.currentTimeMillis());
         MusicTrack track = new MusicTrack(id, name, relativePath);
         sceneState.addMusicTrack(track);
-        if (onMusicChanged != null) { onMusicChanged.run(); }
+        if (onMusicChanged != null) {
+            onMusicChanged.run();
+        }
         refresh(sceneState);
     }
 

@@ -58,16 +58,17 @@ public class TokenLayer {
     /** Fired after a drag-drop; carries the token and {fromX, fromY, toX, toY}. */
     private BiConsumer<Token, double[]> onTokenMoved;
 
+    /** Creates the token layer bound to the given scene state. */
+    public TokenLayer(SceneState sceneState) {
+        this.sceneState = sceneState;
+    }
+
     public void setOnTokenPlaced(Consumer<Token> handler) {
         this.onTokenPlaced = handler;
     }
 
     public void setOnTokenMoved(BiConsumer<Token, double[]> handler) {
         this.onTokenMoved = handler;
-    }
-
-    public TokenLayer(SceneState sceneState) {
-        this.sceneState = sceneState;
     }
 
     /**

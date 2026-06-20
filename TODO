@@ -1,83 +1,23 @@
-# Save All / Load Project / Reset
-1. Save All / Load Project / Reset — not started
+# Open features
 
-This is the complete project save/load system we designed earlier but never built. Nothing from it exists in code yet:
+## Save All / Load Project / Reset
+Not started. Design decisions still pending:
+- ProjectStateManager class
+- saveProject() — bundle all scene JSONs + referenced assets into a packaged file (proposed: .ttrpg, internally ZIP)
+- loadProject() — replace current data/ + assets/ with unpacked contents; warn before overwrite
+- resetProject() — wipe everything, create a fresh default scene
+- Menu items: File → Save Project / Load Project… / Reset Project
+- Safety UX: overwrite warning on save, confirmation + backup suggestion on reset
 
-ProjectStateManager class (doesn't exist)
-saveProject() — bundle all scene JSONs + referenced assets into a single packaged file (custom extension, internally ZIP)
-loadProject() — replace current data/ + relevant assets/ with the unpacked contents; show warning to save first
-resetProject() — wipe everything, create a fresh default scene
-Menu items for all three under File menu
-The custom file extension decision (.ttrpg was proposed but not confirmed)
-2. Scene cleanup — known gap (already in our bug list)
+## Named log sessions
+Low priority. When enabling logging, optionally prompt for a human-readable session name
+(e.g. "Session 5 — Dragon Cave") to use as the folder name instead of the raw timestamp.
+No code changes needed until this is prioritised.
 
-SceneController.deleteScene() removes the scene from the in-memory list and scenes.json but leaves data/scenes/{id}.json on disk. This leaks files indefinitely.
+## Browse for music from any location
+Currently the music file picker is restricted to assets/music/.
+Allow browsing anywhere on disk and normalise the selected path to relative if possible.
 
-Also missing but not in the TODO file:
-
-These came up in design conversations but were never listed in the TODO and were never built:
-
-Log replay window — loadLogFromFile() in MainWindow is a stub; the visual step-through replay with a speed slider was deferred to phase 2
-Audio device selection — MusicController has a comment noting this is unimplemented (JavaFX limitation requiring a third-party library)
-Browse for music from any location — currently restricted to assets/music/; the general file picker was deferred
-
-# Bugs
-1. SceneStateManager.loadMaster() — null activeSceneId propagates silently
-If scenes.json exists but activeSceneId is missing/null, manager.getActiveSceneId() returns null. SceneController then calls SceneStateManager.loadScene(null) → scenePath(null) = "data/scenes/null.json" → JsonStateManager.load() returns a fresh empty state with no error.
-
-2. SceneController.addSceneWithId() — new scene file never written until next switch
-It calls switchToScene(sceneId) → loadScene(sceneId) → file not found → fresh SceneState returned without ever being saved to disk. If the app crashes before the next mutation, the scene is permanently lost.
-
-3. JsonStateManager.load() always re-saves on every load (line 139)
-Every scene switch triggers save(state, filePath) — a full disk write — even when nothing changed. On startup with many scenes, this writes every scene JSON file unnecessarily.
-
-4. JsonStateManager.setFieldDirectly() — reflection on field names that can silently break on rename
-"mapImagePath" and "mapWidthInFeet" are string literals. If either field is renamed in SceneState, this silently fails with no compile error. SceneState has public setters for both; a package-private initFromLoad(String mapPath, double feet) method would be both correct and safe.
-
-5. SceneState duplicate Javadoc (lines 130–137) — two /** blocks before findByName.
-
-6. MapController.setNamesVisible() / setStatusVisible() over-refresh
-Both call fireStateChanged() which triggers refreshPlayerView() → mapCanvas.syncTokens(). Rebuilding the entire token list when only a visual toggle changed is unnecessary; only mapCanvas.repaint() is needed.
-
-7. LogController.writeEntry() — START_LOG and SCENE_SNAPSHOT pushed into the pointer index
-Both events are added to entryOffsets and entryEvents, inflating the lists. minUndoPointer prevents undoing them but they still consume slots and offset the pointer arithmetic.
-
-8. LogParser.parse() loses all timestamps
-Every parsed entry gets Instant.now() (parse time), not the original time from the file. Replay will show all entries with the same timestamp.
-
-9. MusicTrack.setVolume() has no bounds check
-Values outside [0.0, 1.0] pass directly to MediaPlayer.setVolume(). JavaFX will silently clamp or throw.
-
-10. Entity.xFraction / yFraction setters have no validation
-Coordinates outside [0.0, 1.0] place tokens off the canvas with no error.
-
-# OOP violations
-11. SceneState.getPlayers(), getCharacters(), getMusicTracks() expose live lists
-Callers can mutate them directly without triggering save(). JsonStateManager intentionally uses .add() during load, but this is a wide-open hole for accidental corruption everywhere else.
-
-12. Entity.setId() exists
-The comment says the ID is "generated once on creation (used as folder name key)." A public setter contradicts that invariant and is never used.
-
-13. SceneManager.getScenes() returns the live internal list
-LogController.writeStartLog() and other callers can add/remove scenes directly, bypassing addScene()/removeScene().
-
-14. SceneManager and SceneState are not final
-Every other controller and model class in the project is final. These two are inconsistent.
-
-15. FileHelper.CHARACTERS_DIR, MAPS_DIR, MUSIC_DIR use File.separator
-On Windows this gives assets\characters, but stored paths everywhere else use /. SceneController.addEntityToSession() already works around this with FileHelper.CHARACTERS_DIR + "/" + name, creating a mixed-separator string. avatarPathFor() and detailsPathFor() also use File.separator and are effectively never used as a result (dead utility methods).
-
-16. LogWriter duplicates the parsing logic of LogParser
-LogWriter.parseSingle() and LogParser.parse() parse the same text format with two independent implementations. A format change requires updating both.
-
-17. SidebarPanel mixes UI with logic
-assignDisplayName() (numbering algorithm) and promptForSize() (entity sizing input) are domain/input logic living in a UI panel class. They should be in a service or controller.
-
-18. MainWindow.wireScenePanel() and MainWindow.loadLogFromFile() use inline FQN
-ttrpgdash.scene.SceneEntry::getName, javafx.stage.FileChooser, and java.io.File appear as inline FQNs instead of imports, inconsistent with the rest of the file and will trigger checkstyle.
-
-19. TokenLayer callback fields use inline FQN
-java.util.function.Consumer<Token> and java.util.function.BiConsumer<Token, double[]> written inline instead of via imports — same checkstyle concern.
-
-20. MapController is not final
-All other controllers are final.
+## Audio device selection
+JavaFX MediaPlayer does not expose device selection without a third-party library.
+Likely out of scope unless a library is adopted.

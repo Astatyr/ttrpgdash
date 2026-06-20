@@ -46,7 +46,10 @@ public final class SceneState {
      * Runtime save path — set by SceneStateManager so each scene writes to its own file.
      * Transient so Gson does not serialise it.
      */
-    private transient String savePath = JsonStateManager.DEFAULT_STATE_FILE;
+    private transient String savePath;
+
+    /** When true, all save() calls are no-ops. Set for replay states. */
+    private transient boolean saveEnabled = true;
 
     /**
      * Creates a fresh SceneState with default values.
@@ -157,6 +160,10 @@ public final class SceneState {
                 .findFirst();
     }
 
+    /**
+     * Finds any entity by ID regardless of type.
+     * Returns an Optional — always check isPresent() before using.
+     */
     public Optional<Entity> findById(String id) {
         return getAllEntities().stream()
                 .filter(e -> e.getId().equals(id))
@@ -240,8 +247,23 @@ public final class SceneState {
         this.savePath = path;
     }
 
+    /**
+     * Disables all future save() calls on this instance.
+     * Used by replay states that must never write to disk.
+     */
+    public void disableSave() {
+        this.saveEnabled = false;
+    }
+
     /** Saves the current state to its configured path. Called automatically by all mutators. */
     public void save() {
+        if (!saveEnabled) {
+            return;
+        }
+        if (savePath == null) {
+            System.err.println("[SceneState] save() called but savePath is not set — skipping.");
+            return;
+        }
         JsonStateManager.save(this, savePath);
     }
 }

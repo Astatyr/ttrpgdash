@@ -11,7 +11,7 @@ import java.util.List;
 public abstract class Entity {
 
     /** Unique ID, generated once on creation (used as folder name key). */
-    private String id;
+    private final String id;
 
     /** Display name shown on the token and sidebar. */
     private String name;

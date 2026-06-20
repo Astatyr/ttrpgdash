@@ -1,8 +1,10 @@
 package ttrpgdash;
 
+import java.io.File;
+
 import javafx.geometry.Orientation;
-import javafx.geometry.Pos;
 import javafx.geometry.Point2D;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
@@ -24,7 +26,6 @@ import javafx.scene.layout.Priority;
 import javafx.scene.paint.Color;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-import java.io.File;
 import ttrpgdash.entity.Entity;
 import ttrpgdash.entity.SidebarPanel;
 import ttrpgdash.entity.StatusEffect;
@@ -35,6 +36,7 @@ import ttrpgdash.map.MapCanvas;
 import ttrpgdash.map.MapController;
 import ttrpgdash.map.Token;
 import ttrpgdash.player.PlayerView;
+import ttrpgdash.replay.ReplayWindow;
 import ttrpgdash.scene.SceneController;
 import ttrpgdash.scene.SceneEntry;
 import ttrpgdash.scene.SceneManager;
@@ -139,6 +141,11 @@ public class MainWindow {
 
         Scene scene = new Scene(root, 1440, 800);
         scene.setFill(Color.rgb(13, 13, 26));
+
+        // Defensive reset: ensure logging is always off at startup
+        logController.disable();
+
+        stage.setOnCloseRequest(e -> logController.disable());
 
         stage.setScene(scene);
         stage.setTitle("TTRPG Dash — DM View");
@@ -401,8 +408,7 @@ public class MainWindow {
         if (selected == null) {
             return;
         }
-        // TODO (replay): parse selected log and open the visual replay window
-        setStatus("Log selected: " + selected.getName() + " — replay not yet implemented.");
+        ReplayWindow.open(selected.toPath(), stage);
     }
 
     private void setStatus(String message) {

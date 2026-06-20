@@ -103,7 +103,6 @@ public final class LogWriter {
     private String format(LogEntry entry) {
         StringBuilder sb = new StringBuilder();
         sb.append("# ").append(toHeaderName(entry.getEvent())).append('\n');
-        sb.append("Timestamp: ").append(entry.getTimestamp().toString()).append('\n');
         for (var field : entry.getFields().entrySet()) {
             sb.append(field.getKey()).append(": ").append(field.getValue()).append('\n');
         }
@@ -138,14 +137,7 @@ public final class LogWriter {
         if (event == null) {
             return null;
         }
-        Instant timestamp = Instant.now();
-        String tsValue = fields.remove("Timestamp");
-        if (tsValue != null) {
-            try {
-                timestamp = Instant.parse(tsValue);
-            } catch (Exception ignored) { }
-        }
-        return new LogEntry(event, fields, timestamp);
+        return new LogEntry(event, fields, Instant.now());
     }
 
     private static String toHeaderName(LogEvent event) {

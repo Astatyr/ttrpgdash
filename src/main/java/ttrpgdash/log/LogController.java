@@ -1,6 +1,7 @@
 package ttrpgdash.log;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -15,6 +16,7 @@ import ttrpgdash.scene.SceneEntry;
 import ttrpgdash.scene.SceneManager;
 import ttrpgdash.scene.SceneState;
 import ttrpgdash.scene.SceneStateManager;
+import ttrpgdash.util.JsonStateManager;
 
 /**
  * Orchestrates session logging with a pointer-based undo/redo mechanism.
@@ -38,6 +40,9 @@ import ttrpgdash.scene.SceneStateManager;
 public final class LogController {
 
     private static final String LOG_DIR = "logs";
+
+    /** Increment when the log format changes in a way that may affect parsing. */
+    private static final String LOG_VERSION = "1";
     private static final DateTimeFormatter FILE_FMT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")
                     .withZone(ZoneId.systemDefault());
@@ -54,6 +59,7 @@ public final class LogController {
 
     private boolean enabled = false;
     private String activeSceneId;
+    private String logFolder;
 
     public boolean isEnabled() {
         return enabled;
@@ -74,9 +80,11 @@ public final class LogController {
         pointer = -1;
         minUndoPointer = -1;
 
-        String filename = LOG_DIR + "/session_" + FILE_FMT.format(Instant.now()) + ".log";
+        String sessionName = "session_" + FILE_FMT.format(Instant.now());
+        logFolder = LOG_DIR + "/" + sessionName;
         try {
-            writer.open(Paths.get(filename));
+            Files.createDirectories(Paths.get(logFolder));
+            writer.open(Paths.get(logFolder + "/session.log"));
             activeSceneId = sceneManager.getActiveSceneId();
             enabled = true;
             writeStartLog(sceneManager, activeState);
@@ -156,6 +164,7 @@ public final class LogController {
 
     // ── Log methods ───────────────────────────────────────────────────────────
 
+    /** Records a scene switch, storing both the previous and next scene IDs for undo. */
     public void onSceneSwitched(String newSceneId) {
         if (!enabled) {
             return;
@@ -167,6 +176,7 @@ public final class LogController {
         writeEntry(LogEvent.SWITCH_SCENE, f);
     }
 
+    /** Logs the addition of a player or character to the session. */
     public void logAddEntity(Entity entity) {
         if (!enabled) {
             return;
@@ -175,6 +185,7 @@ public final class LogController {
         writeEntry(event, fields("Name", entity.getName(), "Size", fmt(entity.getSizeInFeet())));
     }
 
+    /** Logs the removal of a player or character from the session. */
     public void logRemoveEntity(Entity entity) {
         if (!enabled) {
             return;
@@ -183,6 +194,7 @@ public final class LogController {
         writeEntry(event, fields("Name", entity.getName(), "Size", fmt(entity.getSizeInFeet())));
     }
 
+    /** Logs the initial placement of a token on the map. */
     public void logPlaceToken(Entity entity, double x, double y) {
         if (!enabled) {
             return;
@@ -210,6 +222,7 @@ public final class LogController {
         writeEntry(event, f);
     }
 
+    /** Logs the removal of a token from the map, capturing its last position and status effects. */
     public void logRemoveFromMap(Entity entity) {
         if (!enabled) {
             return;
@@ -223,6 +236,7 @@ public final class LogController {
         writeEntry(LogEvent.REMOVE_FROM_MAP, f);
     }
 
+    /** Logs a rider mounting a mount token. */
     public void logMount(String rider, String mount) {
         if (!enabled) {
             return;
@@ -230,6 +244,7 @@ public final class LogController {
         writeEntry(LogEvent.MOUNT, fields("Rider", rider, "Mount", mount));
     }
 
+    /** Logs a rider dismounting. */
     public void logDismount(String rider, String mount) {
         if (!enabled) {
             return;
@@ -237,6 +252,7 @@ public final class LogController {
         writeEntry(LogEvent.DISMOUNT, fields("Rider", rider, "Mount", mount));
     }
 
+    /** Logs a status effect being applied to an entity. */
     public void logAddStatusEffect(String entityName, String status) {
         if (!enabled) {
             return;
@@ -244,6 +260,7 @@ public final class LogController {
         writeEntry(LogEvent.ADD_STATUS_EFFECT, fields("Name", entityName, "Status", status));
     }
 
+    /** Logs a status effect being removed from an entity. */
     public void logRemoveStatusEffect(String entityName, String status) {
         if (!enabled) {
             return;
@@ -251,6 +268,7 @@ public final class LogController {
         writeEntry(LogEvent.REMOVE_STATUS_EFFECT, fields("Name", entityName, "Status", status));
     }
 
+    /** Logs a map image being loaded onto the scene. */
     public void logAddMap(String mapPath, double sizeInFeet) {
         if (!enabled) {
             return;
@@ -258,6 +276,7 @@ public final class LogController {
         writeEntry(LogEvent.ADD_MAP, fields("Map", mapPath, "Map Size In Feet", fmt(sizeInFeet)));
     }
 
+    /** Logs a change to the map's real-world width in feet. */
     public void logChangeMapSize(double oldSize, double newSize) {
         if (!enabled) {
             return;
@@ -266,6 +285,7 @@ public final class LogController {
                 fields("Old Size In Feet", fmt(oldSize), "New Size In Feet", fmt(newSize)));
     }
 
+    /** Logs a new scene being created. */
     public void logAddScene(String sceneId, String name) {
         if (!enabled) {
             return;
@@ -273,6 +293,7 @@ public final class LogController {
         writeEntry(LogEvent.ADD_SCENE, fields("Scene ID", sceneId, "Name", name));
     }
 
+    /** Logs a scene being deleted. */
     public void logDeleteScene(String sceneId, String sceneName) {
         if (!enabled) {
             return;
@@ -280,6 +301,7 @@ public final class LogController {
         writeEntry(LogEvent.DELETE_SCENE, fields("Scene ID", sceneId, "Name", sceneName));
     }
 
+    /** Logs a scene rename, storing both old and new names for undo. */
     public void logRenameScene(String sceneId, String oldName, String newName) {
         if (!enabled) {
             return;
@@ -337,6 +359,7 @@ public final class LogController {
 
     private void writeStartLog(SceneManager sceneManager, SceneState activeState) {
         Map<String, String> header = new LinkedHashMap<>();
+        header.put("Log Version", LOG_VERSION);
         header.put("Time", DATE_FMT.format(Instant.now()));
         header.put("Active Scene", activeSceneId);
         StringBuilder ids = new StringBuilder("[");
@@ -355,6 +378,7 @@ public final class LogController {
                     ? activeState
                     : SceneStateManager.loadScene(entry.getId());
             writeSceneSnapshot(entry.getId(), state);
+            JsonStateManager.save(state, logFolder + "/" + entry.getId() + ".json");
         }
     }
 
