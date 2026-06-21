@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Optional;
@@ -61,6 +62,9 @@ public final class ProjectManager {
         chooser.setTitle("Save Project");
         chooser.getExtensionFilters().add(
                 new FileChooser.ExtensionFilter("TTRPG Dash Project", "*." + FILE_EXTENSION));
+        File savesDir = new File("saves");
+        savesDir.mkdirs();
+        chooser.setInitialDirectory(savesDir);
         File result = chooser.showSaveDialog(ownerStage);
         if (result == null) {
             return;
@@ -116,6 +120,9 @@ public final class ProjectManager {
         chooser.setTitle("Load Project");
         chooser.getExtensionFilters().add(
                 new FileChooser.ExtensionFilter("TTRPG Dash Project", "*." + FILE_EXTENSION));
+        File savesDir = new File("saves");
+        savesDir.mkdirs();
+        chooser.setInitialDirectory(savesDir);
         File selected = chooser.showOpenDialog(ownerStage);
         if (selected == null) {
             return false;
@@ -242,6 +249,56 @@ public final class ProjectManager {
 
         dialog.setScene(new Scene(box));
         return dialog;
+    }
+
+    /**
+     * Deletes all scenes, assets, and logs, returning the application to a clean state.
+     * Shows a confirmation warning before proceeding.
+     *
+     * @return {@code true} if the reset completed, {@code false} if the user cancelled or it failed
+     */
+    public static boolean resetProject(Stage ownerStage) {
+        Alert warning = new Alert(Alert.AlertType.WARNING,
+                """
+                This will permanently delete ALL scenes, assets, and logs.
+
+                The application will return to a completely clean state.
+                This cannot be undone.
+
+                Continue?""",
+                ButtonType.YES, ButtonType.NO);
+        warning.setTitle("Reset Project");
+        warning.setHeaderText("All data will be permanently deleted");
+        Optional<ButtonType> choice = warning.showAndWait();
+        if (choice.isEmpty() || choice.get() != ButtonType.YES) {
+            return false;
+        }
+
+        try {
+            deleteDirectory(Paths.get("data"));
+            deleteDirectory(Paths.get("assets"));
+            deleteDirectory(Paths.get("logs"));
+            return true;
+        } catch (IOException e) {
+            System.err.println("[ProjectManager] Reset failed: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private static void deleteDirectory(Path dir) throws IOException {
+        if (!Files.exists(dir)) {
+            return;
+        }
+        try (var stream = Files.walk(dir)) {
+            stream.sorted(Comparator.reverseOrder()).forEach(path -> {
+                try {
+                    Files.deleteIfExists(path);
+                } catch (IOException e) {
+                    System.err.println("[ProjectManager] Could not delete: " + path
+                            + " — " + e.getMessage());
+                }
+            });
+        }
     }
 
     private static Task<Void> buildLoadTask(Path source) {

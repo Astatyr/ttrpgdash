@@ -5,7 +5,9 @@ import java.util.function.Consumer;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextInputDialog;
@@ -169,6 +171,9 @@ public class SidebarPanel extends VBox {
         if (folder == null) {
             return;
         }
+        if (!isInsideCharactersDir(folder)) {
+            return;
+        }
 
         String name = EntityNaming.assignDisplayName(folder.getName(), sceneState.getPlayers());
         String id = FileHelper.generateId(name);
@@ -193,6 +198,9 @@ public class SidebarPanel extends VBox {
     private void addCharacter() {
         File folder = FileHelper.browseForCharacterFolder(ownerStage);
         if (folder == null) {
+            return;
+        }
+        if (!isInsideCharactersDir(folder)) {
             return;
         }
 
@@ -220,6 +228,26 @@ public class SidebarPanel extends VBox {
      * Checks if Avatar.png or Details.png exists in the chosen folder.
      * Returns the absolute path if found, null otherwise.
      */
+    /**
+     * Returns true if the given folder is a direct child of {@code assets/characters/}.
+     * Shows an error dialog and returns false if not, so the caller can abort.
+     */
+    private boolean isInsideCharactersDir(File folder) {
+        File charsDir = new File(FileHelper.CHARACTERS_DIR).getAbsoluteFile();
+        if (folder.getAbsoluteFile().getParentFile().equals(charsDir)) {
+            return true;
+        }
+        Alert alert = new Alert(Alert.AlertType.ERROR,
+                "Character folders must be placed directly inside:\n\n"
+                + charsDir.getPath()
+                + "\n\nPlease move or copy the folder there first.",
+                ButtonType.OK);
+        alert.setTitle("Wrong Location");
+        alert.setHeaderText("Folder is outside assets/characters/");
+        alert.showAndWait();
+        return false;
+    }
+
     private String resolveAsset(File folder, String filename) {
         File f = new File(folder, filename);
         return f.exists() ? FileHelper.toRelativePath(f) : null;

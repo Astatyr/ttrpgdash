@@ -317,6 +317,13 @@ public final class MapController {
         if (file == null) {
             return;
         }
+        File mapsDir = new File(FileHelper.MAPS_DIR).getAbsoluteFile();
+        if (!file.getAbsoluteFile().getParentFile().equals(mapsDir)) {
+            file = FileHelper.copyToMapsDir(file);
+            if (file == null) {
+                return;
+            }
+        }
         setMap(FileHelper.toRelativePath(file), file.getName());
     }
 

@@ -264,8 +264,18 @@ public class MainWindow {
             });
         });
 
+        MenuItem resetProject = new MenuItem("Reset Project…");
+        resetProject.setOnAction(e -> {
+            if (ProjectManager.resetProject(stage)) {
+                logController.disable();
+                SceneManager newManager = SceneStateManager.loadMaster();
+                SceneStateManager.pruneOrphanedSceneFiles(newManager);
+                new MainWindow(newManager).show(stage);
+            }
+        });
+
         fileMenu.getItems().addAll(enableLog, replayLog, new SeparatorMenuItem(),
-                saveProject, loadProject, new SeparatorMenuItem(), clearAll);
+                saveProject, loadProject, resetProject, new SeparatorMenuItem(), clearAll);
 
         // ── Map ───────────────────────────────────────────────────────────────
         Menu mapMenu = new Menu("Map");

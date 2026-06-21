@@ -1,6 +1,8 @@
 package ttrpgdash.util;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -206,6 +208,58 @@ public class FileHelper {
     public static String generateId(String name) {
         String base = name.toLowerCase().replaceAll("[^a-z0-9]", "");
         return base + "_" + Long.toHexString(System.currentTimeMillis());
+    }
+
+    /**
+     * Copies a map image into {@code assets/maps/}.
+     * If a file with the same name already exists, appends {@code _1}, {@code _2}, etc.
+     * Returns the destination file, or {@code null} if the copy fails.
+     */
+    public static File copyToMapsDir(File source) {
+        File mapsDir = new File(MAPS_DIR);
+        mapsDir.mkdirs();
+        String name = source.getName();
+        String base = name.contains(".") ? name.substring(0, name.lastIndexOf('.')) : name;
+        String ext  = name.contains(".") ? name.substring(name.lastIndexOf('.')) : "";
+        File dest = new File(mapsDir, name);
+        int counter = 1;
+        while (dest.exists()) {
+            dest = new File(mapsDir, base + "_" + counter + ext);
+            counter++;
+        }
+        try {
+            Files.copy(source.toPath(), dest.toPath());
+            return dest;
+        } catch (IOException e) {
+            System.err.println("[FileHelper] Failed to copy map file: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Copies a music file into {@code assets/music/}.
+     * If a file with the same name already exists, appends {@code _1}, {@code _2}, etc.
+     * Returns the destination file, or {@code null} if the copy fails.
+     */
+    public static File copyToMusicDir(File source) {
+        File musicDir = new File(MUSIC_DIR);
+        musicDir.mkdirs();
+        String name = source.getName();
+        String base = name.contains(".") ? name.substring(0, name.lastIndexOf('.')) : name;
+        String ext  = name.contains(".") ? name.substring(name.lastIndexOf('.')) : "";
+        File dest = new File(musicDir, name);
+        int counter = 1;
+        while (dest.exists()) {
+            dest = new File(musicDir, base + "_" + counter + ext);
+            counter++;
+        }
+        try {
+            Files.copy(source.toPath(), dest.toPath());
+            return dest;
+        } catch (IOException e) {
+            System.err.println("[FileHelper] Failed to copy music file: " + e.getMessage());
+            return null;
+        }
     }
 
     /**

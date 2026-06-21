@@ -161,6 +161,14 @@ public final class MusicPanel extends VBox {
         if (file == null) {
             return;
         }
+        // Copy into assets/music/ if selected from outside it
+        File musicDir = new File(FileHelper.MUSIC_DIR).getAbsoluteFile();
+        if (!file.getAbsoluteFile().getParentFile().equals(musicDir)) {
+            file = FileHelper.copyToMusicDir(file);
+            if (file == null) {
+                return;
+            }
+        }
         String relativePath = FileHelper.toRelativePath(file);
         String name = file.getName().replaceAll("\\.[^.]+$", "");
         String id = name.toLowerCase().replaceAll("[^a-z0-9]", "") + "_"
