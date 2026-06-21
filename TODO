@@ -1,5 +1,48 @@
 # Open features
 
+## Scripting system (Lua)
+
+Allows DMs to write Lua scripts for abilities, encounters, and custom logic.
+Scripts call a sandboxed dashboard API. Output goes to the output panel.
+
+### Phase 1 — Output panel
+- Add a collapsible output panel at the bottom of the main window (above the status bar)
+- Scrollable log with tagged entries: [DICE], [SCRIPT], [SYSTEM]
+- Clear button
+- No Lua required — phase 1 is purely UI
+
+### Phase 2 — Lua runtime
+- Add LuaJ dependency to build.gradle
+- Sandbox: strip file I/O, networking, OS calls, load(), loadfile()
+- Dashboard API callable from Lua:
+    dashboard.roll("2d6+3")           -- resolves dice, prints [DICE] to output, returns number
+    dashboard.output("text")          -- prints [SCRIPT] to output
+    dashboard.addStatus(name, effect) -- applies status effect to named entity
+    dashboard.removeStatus(name, effect)
+    dashboard.getEntity(name)         -- returns read-only entity table (stats, position, status)
+- Project script (data/scripts/project.lua) loaded at startup if present;
+  defines shared functions available to all other scripts
+
+### Phase 3 — Script browser
+- data/scripts/ folder holds any .lua files, DM-named, DM-managed
+  (bundled with project save/load since it lives inside data/)
+- New "Scripts" menu in the menu bar
+- "Open Script Browser" lists all .lua files found in data/scripts/
+- Click a script to run it; output goes to the panel
+- Scripts window stays open until dismissed; re-scannable
+
+### Phase 4 — Entity abilities
+- Convention: assets/characters/{name}/abilities.lua auto-discovered by folder name
+- Entity right-click on map → "Run Script" → lists ability names from the abilities table
+- Clicking an ability runs that specific Lua function
+- abilities table format:
+    abilities = {
+        { name = "Fireball", desc = "8d6 fire damage", run = function() ... end },
+    }
+- If no abilities.lua exists for the entity, "Run Script" is absent from the menu
+
+---
+
 ## Audio device selection
 Dropdown at the top of the music bar showing all connected audio output devices.
 - Enumerate with javax.sound.sampled.AudioSystem.getMixerInfo() (no extra library needed)

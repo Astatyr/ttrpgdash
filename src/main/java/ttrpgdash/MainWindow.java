@@ -24,6 +24,7 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
@@ -39,6 +40,7 @@ import ttrpgdash.map.Token;
 import ttrpgdash.player.PlayerView;
 import ttrpgdash.project.ProjectManager;
 import ttrpgdash.replay.ReplayWindow;
+import ttrpgdash.script.ScriptEngine;
 import ttrpgdash.scene.SceneController;
 import ttrpgdash.scene.SceneEntry;
 import ttrpgdash.scene.SceneManager;
@@ -58,6 +60,7 @@ public final class MainWindow {
     private SplitPane splitPane;
     private ScenePanel scenePanel;
     private final Label statusLabel = new Label("Ready");
+    private final OutputPanel outputPanel = new OutputPanel();
     private PlayerView playerView;
 
     private final SceneController sceneController;
@@ -65,6 +68,7 @@ public final class MainWindow {
     private final LogController logController = new LogController();
     private UndoHandler undoHandler;
     private RedoHandler redoHandler;
+    private ScriptEngine scriptEngine;
 
     /**
      * Creates the window for the given scene manager.
@@ -136,10 +140,11 @@ public final class MainWindow {
         topBar.setStyle("-fx-background-color: #16163a;");
 
         BorderPane root = new BorderPane();
+        VBox bottomArea = new VBox(outputPanel, statusBar);
         root.setTop(topBar);
         root.setCenter(splitPane);
         root.setRight(scenePanel);
-        root.setBottom(statusBar);
+        root.setBottom(bottomArea);
         root.setStyle("-fx-background-color: #0d0d1a;");
 
         Scene scene = new Scene(root, 1440, 800);
@@ -151,6 +156,9 @@ public final class MainWindow {
                 performRedo();
             }
         });
+
+        scriptEngine = new ScriptEngine(outputPanel, sceneController, mapController, logController);
+        scriptEngine.loadProjectScript();
 
         // Defensive reset: ensure logging is always off at startup
         logController.disable();
@@ -217,7 +225,7 @@ public final class MainWindow {
         MenuBar bar = new MenuBar();
         bar.setStyle("-fx-background-color: #16163a;");
 
-        // ── File ─────────────────────────────────────────────────────────────
+
         Menu fileMenu = new Menu("File");
 
         CheckMenuItem enableLog = new CheckMenuItem("Enable Logging");
@@ -271,7 +279,7 @@ public final class MainWindow {
         fileMenu.getItems().addAll(enableLog, replayLog, new SeparatorMenuItem(),
                 saveProject, loadProject, resetProject, new SeparatorMenuItem(), clearAll);
 
-        // ── Map ───────────────────────────────────────────────────────────────
+
         Menu mapMenu = new Menu("Map");
 
         MenuItem loadMap = new MenuItem("Load Map PNG…");
@@ -301,7 +309,7 @@ public final class MainWindow {
                 new SeparatorMenuItem(), clearMap, clearPositions,
                 new SeparatorMenuItem(), toggleNames, toggleStatus);
 
-        // ── View ─────────────────────────────────────────────────────────────
+
         Menu viewMenu = new Menu("View");
         MenuItem openPlayerView = new MenuItem("Open Player View");
         openPlayerView.setOnAction(e -> {
@@ -312,7 +320,7 @@ public final class MainWindow {
         });
         viewMenu.getItems().add(openPlayerView);
 
-        // ── Undo / Redo ───────────────────────────────────────────────────────
+
         Menu undoMenu = new Menu("Undo");
         undoMenu.setOnShowing(e -> {
             undoMenu.hide();
@@ -438,6 +446,7 @@ public final class MainWindow {
     }
 
     private void performUndo() {
+        scriptEngine.cancel();
         if (logController.canUndo()) {
             var entry = logController.doUndo();
             if (entry != null) {
@@ -450,6 +459,7 @@ public final class MainWindow {
     }
 
     private void performRedo() {
+        scriptEngine.cancel();
         if (logController.canRedo()) {
             var entry = logController.doRedo();
             if (entry != null) {
@@ -463,6 +473,7 @@ public final class MainWindow {
 
     private void setStatus(String message) {
         statusLabel.setText(message);
+        outputPanel.log("SYSTEM", message);
     }
 
     private void refreshPlayerView() {

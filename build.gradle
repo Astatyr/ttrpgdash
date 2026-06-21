@@ -29,6 +29,8 @@ repositories {
 dependencies {
     // Gson for reading/writing state.json
     implementation 'com.google.code.gson:gson:2.10.1'
+    // LuaJ for the scripting system (Phase 2)
+    implementation 'org.luaj:luaj-jse:3.0.1'
 }
 
 // Ensure the assets/ and data/ folders are accessible at runtime

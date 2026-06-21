@@ -166,7 +166,7 @@ public final class ProjectManager {
         return task.getException() == null && !task.isCancelled();
     }
 
-    // ── Private helpers ───────────────────────────────────────────────────────
+
 
     private static Task<Void> buildSaveTask(SceneManager sceneManager, Path target) {
         return new Task<>() {
