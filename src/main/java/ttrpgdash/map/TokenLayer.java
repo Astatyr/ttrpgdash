@@ -26,7 +26,7 @@ import ttrpgdash.scene.SceneState;
  * TokenLayer is owned by MapCanvas and called during canvas redraws and
  * mouse event handling.
  */
-public class TokenLayer {
+public final class TokenLayer {
 
     /** All currently visible tokens, keyed by entity ID. */
     private final Map<String, Token> tokens = new LinkedHashMap<>();

@@ -20,7 +20,7 @@ import javafx.stage.Stage;
  * - Robust image loading with fallback
  * - Safe asset path handling
  */
-public class FileHelper {
+public final class FileHelper {
 
     public static final String ASSETS_DIR = "assets";
     public static final String CHARACTERS_DIR = ASSETS_DIR + "/characters";
@@ -220,7 +220,7 @@ public class FileHelper {
         mapsDir.mkdirs();
         String name = source.getName();
         String base = name.contains(".") ? name.substring(0, name.lastIndexOf('.')) : name;
-        String ext  = name.contains(".") ? name.substring(name.lastIndexOf('.')) : "";
+        String ext = name.contains(".") ? name.substring(name.lastIndexOf('.')) : "";
         File dest = new File(mapsDir, name);
         int counter = 1;
         while (dest.exists()) {
@@ -246,7 +246,7 @@ public class FileHelper {
         musicDir.mkdirs();
         String name = source.getName();
         String base = name.contains(".") ? name.substring(0, name.lastIndexOf('.')) : name;
-        String ext  = name.contains(".") ? name.substring(name.lastIndexOf('.')) : "";
+        String ext = name.contains(".") ? name.substring(name.lastIndexOf('.')) : "";
         File dest = new File(musicDir, name);
         int counter = 1;
         while (dest.exists()) {

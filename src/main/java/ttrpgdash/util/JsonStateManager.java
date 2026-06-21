@@ -32,7 +32,7 @@ import ttrpgdash.scene.SceneState;
  *   SceneState state = JsonStateManager.load(path);   // on startup / scene switch
  *   JsonStateManager.save(state, path);               // called automatically by SceneState mutators
  */
-public class JsonStateManager {
+public final class JsonStateManager {
 
     /** Default save path used when no scene-specific path is configured. */
     public static final String DEFAULT_STATE_FILE = "data/state.json";

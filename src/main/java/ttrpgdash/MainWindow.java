@@ -20,10 +20,10 @@ import javafx.scene.control.SplitPane;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
-import javafx.scene.input.KeyCode;
 import javafx.scene.paint.Color;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
@@ -43,8 +43,8 @@ import ttrpgdash.scene.SceneController;
 import ttrpgdash.scene.SceneEntry;
 import ttrpgdash.scene.SceneManager;
 import ttrpgdash.scene.ScenePanel;
-import ttrpgdash.scene.SceneStateManager;
 import ttrpgdash.scene.SceneState;
+import ttrpgdash.scene.SceneStateManager;
 import ttrpgdash.util.FileHelper;
 
 /**
@@ -52,7 +52,7 @@ import ttrpgdash.util.FileHelper;
  * Responsible for layout assembly, UI dialogs, and wiring the controllers.
  * Contains no business logic — all mutations go through SceneController or MapController.
  */
-public class MainWindow {
+public final class MainWindow {
 
     private Stage stage;
     private SplitPane splitPane;
@@ -243,10 +243,7 @@ public class MainWindow {
         MenuItem loadProject = new MenuItem("Load Project…");
         loadProject.setOnAction(e -> {
             if (ProjectManager.loadProject(stage)) {
-                logController.disable();
-                SceneManager newManager = SceneStateManager.loadMaster();
-                SceneStateManager.pruneOrphanedSceneFiles(newManager);
-                new MainWindow(newManager).show(stage);
+                rebuildWith(SceneStateManager.loadMaster());
             }
         });
 
@@ -267,10 +264,7 @@ public class MainWindow {
         MenuItem resetProject = new MenuItem("Reset Project…");
         resetProject.setOnAction(e -> {
             if (ProjectManager.resetProject(stage)) {
-                logController.disable();
-                SceneManager newManager = SceneStateManager.loadMaster();
-                SceneStateManager.pruneOrphanedSceneFiles(newManager);
-                new MainWindow(newManager).show(stage);
+                rebuildWith(SceneStateManager.loadMaster());
             }
         });
 
@@ -427,6 +421,20 @@ public class MainWindow {
             return;
         }
         ReplayWindow.open(selected.toPath(), stage);
+    }
+
+    /**
+     * Tears down the current session and rebuilds the window with a fresh scene manager.
+     * Closes the player view (releasing its bindings), stops logging, prunes orphaned scene
+     * files, then mounts a new MainWindow on the same stage.
+     */
+    private void rebuildWith(SceneManager newManager) {
+        if (playerView != null) {
+            playerView.close();
+        }
+        logController.disable();
+        SceneStateManager.pruneOrphanedSceneFiles(newManager);
+        new MainWindow(newManager).show(stage);
     }
 
     private void performUndo() {

@@ -19,6 +19,7 @@ import java.util.zip.ZipOutputStream;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
+
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
@@ -171,9 +172,9 @@ public final class ProjectManager {
         return new Task<>() {
             @Override
             protected Void call() throws Exception {
-                List<Path> dataFiles  = listFiles(Paths.get("data"));
+                List<Path> dataFiles = listFiles(Paths.get("data"));
                 List<Path> assetFiles = listFiles(Paths.get("assets"));
-                List<Path> logFiles   = listFiles(Paths.get("logs"));
+                List<Path> logFiles = listFiles(Paths.get("logs"));
                 long total = dataFiles.size() + assetFiles.size() + logFiles.size();
                 long done = 0;
 
@@ -182,21 +183,27 @@ public final class ProjectManager {
 
                     updateMessage("Saving scene data…");
                     for (Path file : dataFiles) {
-                        if (isCancelled()) return null;
+                        if (isCancelled()) {
+                            return null;
+                        }
                         writeZipEntry(zos, Paths.get("data"), "data", file);
                         updateProgress(++done, total);
                     }
 
                     updateMessage("Saving assets…");
                     for (Path file : assetFiles) {
-                        if (isCancelled()) return null;
+                        if (isCancelled()) {
+                            return null;
+                        }
                         writeZipEntry(zos, Paths.get("assets"), "assets", file);
                         updateProgress(++done, total);
                     }
 
                     updateMessage("Saving logs…");
                     for (Path file : logFiles) {
-                        if (isCancelled()) return null;
+                        if (isCancelled()) {
+                            return null;
+                        }
                         writeZipEntry(zos, Paths.get("logs"), "logs", file);
                         updateProgress(++done, total);
                     }

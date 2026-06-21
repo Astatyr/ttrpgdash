@@ -4,7 +4,7 @@ package ttrpgdash.music;
  * Represents a single audio track belonging to a scene.
  * Volume and loop are persisted; playback state is runtime-only.
  */
-public class MusicTrack {
+public final class MusicTrack {
 
     private final String id;
     private final String name;

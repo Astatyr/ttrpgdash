@@ -10,7 +10,7 @@ import java.io.IOException;
  * tell the difference between "file missing — start fresh" and "file corrupted
  * — something went wrong".
  */
-public class ScenePersistenceException extends IOException {
+public final class ScenePersistenceException extends IOException {
 
     /**
      * Creates the exception with a descriptive message.

@@ -6,7 +6,7 @@ package ttrpgdash.entity;
  * (e.g. class, spell slots, inspiration). Currently a clean subclass
  * so you can differentiate PCs from NPCs in the sidebar and serialisation.
  */
-public class PlayerEntity extends Entity {
+public final class PlayerEntity extends Entity {
 
     /** Player's real name (optional, for DM reference). */
     private String playerName;

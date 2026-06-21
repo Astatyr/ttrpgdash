@@ -31,7 +31,7 @@ import ttrpgdash.util.FileHelper;
  *   - onDetailsEntity: user pressed "Details" on a card
  *   - onEntitiesChanged: called after add/delete so MainWindow can sync the map
  */
-public class SidebarPanel extends VBox {
+public final class SidebarPanel extends VBox {
 
     private final SceneState sceneState;
     private Stage ownerStage;
@@ -225,10 +225,6 @@ public class SidebarPanel extends VBox {
     }
 
     /**
-     * Checks if Avatar.png or Details.png exists in the chosen folder.
-     * Returns the absolute path if found, null otherwise.
-     */
-    /**
      * Returns true if the given folder is a direct child of {@code assets/characters/}.
      * Shows an error dialog and returns false if not, so the caller can abort.
      */
@@ -248,6 +244,10 @@ public class SidebarPanel extends VBox {
         return false;
     }
 
+    /**
+     * Checks if Avatar.png or Details.png exists in the chosen folder.
+     * Returns the relative path if found, null otherwise.
+     */
     private String resolveAsset(File folder, String filename) {
         File f = new File(folder, filename);
         return f.exists() ? FileHelper.toRelativePath(f) : null;

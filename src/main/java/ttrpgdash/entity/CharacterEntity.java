@@ -8,7 +8,7 @@ package ttrpgdash.entity;
  * Extends Entity with NPC-specific fields. Add creature type, CR,
  * faction, or anything else here as your campaign grows.
  */
-public class CharacterEntity extends Entity {
+public final class CharacterEntity extends Entity {
 
     /**
      * Optional label for grouping (e.g. "Goblin", "Dragon", "Merchant").

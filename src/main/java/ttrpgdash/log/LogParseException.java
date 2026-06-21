@@ -10,7 +10,7 @@ import java.io.IOException;
  * pick this up automatically, while code that needs to distinguish parse
  * failures from read failures can catch it specifically.
  */
-public class LogParseException extends IOException {
+public final class LogParseException extends IOException {
 
     /**
      * Creates the exception with a descriptive message.

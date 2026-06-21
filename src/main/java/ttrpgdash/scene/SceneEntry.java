@@ -4,7 +4,7 @@ package ttrpgdash.scene;
  * Lightweight scene metadata stored in the master scenes.json.
  * The full scene data (entities, map, music) lives in its own file.
  */
-public class SceneEntry {
+public final class SceneEntry {
 
     private String id;
     private String name;

@@ -136,6 +136,9 @@ public final class ReplayWindow {
 
 
     private void rebuildCanvas() {
+        if (playerBar != null) {
+            playerBar.prefHeightProperty().unbind();
+        }
         SceneState state = controller.getActiveState();
         if (state == null) {
             System.err.println("[ReplayWindow] rebuildCanvas: getActiveState() is null"

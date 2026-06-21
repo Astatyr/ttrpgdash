@@ -10,7 +10,7 @@ import java.io.IOException;
  * Extends {@link IOException} so existing I/O catch blocks handle it,
  * while callers that need to report setup failures can catch it specifically.
  */
-public class ReplayException extends IOException {
+public final class ReplayException extends IOException {
 
     /**
      * Creates the exception with a descriptive message.

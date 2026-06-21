@@ -1,23 +1,14 @@
 # Open features
 
-## Save All / Load Project / Reset
-Not started. Design decisions still pending:
-- ProjectStateManager class
-- saveProject() — bundle all scene JSONs + referenced assets into a packaged file (proposed: .ttrpg, internally ZIP)
-- loadProject() — replace current data/ + assets/ with unpacked contents; warn before overwrite
-- resetProject() — wipe everything, create a fresh default scene
-- Menu items: File → Save Project / Load Project… / Reset Project
-- Safety UX: overwrite warning on save, confirmation + backup suggestion on reset
+## Audio device selection
+Dropdown at the top of the music bar showing all connected audio output devices.
+- Enumerate with javax.sound.sampled.AudioSystem.getMixerInfo() (no extra library needed)
+- Requires replacing JavaFX MediaPlayer with javax.sound.sampled for playback
+  (MediaPlayer has no device-target API)
+- MusicController owns all playback logic — swap is self-contained
+- Must be memory-efficient: dispose/re-create Clip or SourceDataLine per device change,
+  not per track play
 
 ## Named log sessions
 Low priority. When enabling logging, optionally prompt for a human-readable session name
-(e.g. "Session 5 — Dragon Cave") to use as the folder name instead of the raw timestamp.
-No code changes needed until this is prioritised.
-
-## Browse for music from any location
-Currently the music file picker is restricted to assets/music/.
-Allow browsing anywhere on disk and normalise the selected path to relative if possible.
-
-## Audio device selection
-JavaFX MediaPlayer does not expose device selection without a third-party library.
-Likely out of scope unless a library is adopted.
+(e.g. "Session 5 — Dragon Cave") to use as the session folder name instead of the raw timestamp.

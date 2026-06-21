@@ -30,7 +30,7 @@ import ttrpgdash.util.FileHelper;
  * All token coordinates are stored as map-image fractions and converted to
  * canvas pixels on each redraw.
  */
-public class MapCanvas extends Pane {
+public final class MapCanvas extends Pane {
 
     private static final double SCALE_MIN = 0.1;
     private static final double SCALE_MAX = 10.0;

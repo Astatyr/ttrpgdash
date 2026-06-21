@@ -27,7 +27,7 @@ import ttrpgdash.util.FileHelper;
  *   - onDetails: user wants to view the Details.png
  *   - onDelete:  user wants to remove this entity entirely
  */
-public class EntityCard extends HBox {
+public final class EntityCard extends HBox {
 
     private final Entity entity;
 

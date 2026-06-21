@@ -20,7 +20,7 @@ import ttrpgdash.scene.SceneState;
  * Call {@link #fadeTransitionTo(Runnable)} when switching scenes to get a
  * 0.5-second black-overlay crossfade.
  */
-public class PlayerView {
+public final class PlayerView {
 
     private static final int FADE_MS = 250;
 
@@ -113,7 +113,15 @@ public class PlayerView {
         return stage.isShowing();
     }
 
+    /** Closes the player view window if it is currently showing. */
+    public void close() {
+        stage.close();
+    }
+
     private void buildContent(SceneState sceneState) {
+        if (playerBar != null) {
+            playerBar.prefHeightProperty().unbind();
+        }
         mapCanvas = new MapCanvas(sceneState, true);
         playerBar = new PlayerBar(sceneState);
         content.setCenter(mapCanvas);

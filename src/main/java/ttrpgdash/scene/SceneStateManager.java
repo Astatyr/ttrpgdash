@@ -23,7 +23,7 @@ import ttrpgdash.util.JsonStateManager;
  *   data/scenes.json        — master list (scene names, order, active id)
  *   data/scenes/{id}.json   — full SceneState + music tracks per scene
  */
-public class SceneStateManager {
+public final class SceneStateManager {
 
     private static final String SCENES_DIR = "data/scenes";
     private static final String MASTER_FILE = "data/scenes.json";
