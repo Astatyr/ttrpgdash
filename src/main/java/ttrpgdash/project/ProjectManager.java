@@ -22,18 +22,10 @@ import com.google.gson.JsonObject;
 
 import javafx.application.Platform;
 import javafx.concurrent.Task;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
-import javafx.scene.control.Label;
-import javafx.scene.control.ProgressBar;
-import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
-import javafx.stage.Modality;
 import javafx.stage.Stage;
-import javafx.stage.StageStyle;
 import ttrpgdash.App;
 import ttrpgdash.scene.SceneManager;
 
@@ -79,7 +71,7 @@ public final class ProjectManager {
         final Path finalTarget = target;
         Task<Void> task = buildSaveTask(sceneManager, finalTarget);
 
-        Stage progress = buildProgressDialog(task, ownerStage, "Saving Project…", true);
+        Stage progress = ProjectProgressDialog.build(task, ownerStage, "Saving Project…", true);
 
         task.setOnSucceeded(e -> Platform.runLater(() -> {
             progress.close();
@@ -145,7 +137,7 @@ public final class ProjectManager {
         }
 
         Task<Void> task = buildLoadTask(selected.toPath());
-        Stage progress = buildProgressDialog(task, ownerStage, "Loading Project…", false);
+        Stage progress = ProjectProgressDialog.build(task, ownerStage, "Loading Project…", false);
 
         task.setOnSucceeded(e -> Platform.runLater(() -> {
             progress.close();
@@ -213,49 +205,6 @@ public final class ProjectManager {
                 return null;
             }
         };
-    }
-
-    private static Stage buildProgressDialog(Task<?> task, Stage ownerStage,
-            String title, boolean cancellable) {
-        ProgressBar bar = new ProgressBar();
-        bar.progressProperty().bind(task.progressProperty());
-        bar.setPrefWidth(320);
-
-        Label message = new Label("Preparing…");
-        message.textProperty().bind(task.messageProperty());
-        message.setStyle("-fx-text-fill: #c0c0c0; -fx-font-size: 12px;");
-
-        VBox box = new VBox(10, message, bar);
-        box.setAlignment(Pos.CENTER_LEFT);
-        box.setPadding(new Insets(20, 24, 20, 24));
-        box.setStyle("-fx-background-color: #0d0d1a;");
-
-        Stage dialog = new Stage(StageStyle.UTILITY);
-        dialog.initOwner(ownerStage);
-        dialog.initModality(Modality.APPLICATION_MODAL);
-        dialog.setTitle(title);
-        dialog.setResizable(false);
-
-        if (cancellable) {
-            dialog.setOnCloseRequest(e -> {
-                e.consume();
-                Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                        "Cancel the save in progress?",
-                        ButtonType.YES, ButtonType.NO);
-                confirm.setTitle("Cancel Save");
-                confirm.initOwner(dialog);
-                confirm.showAndWait().ifPresent(btn -> {
-                    if (btn == ButtonType.YES) {
-                        task.cancel();
-                    }
-                });
-            });
-        } else {
-            dialog.setOnCloseRequest(javafx.event.Event::consume);
-        }
-
-        dialog.setScene(new Scene(box));
-        return dialog;
     }
 
     /**
