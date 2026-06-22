@@ -1,8 +1,10 @@
 package ttrpgdash.script;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.luaj.vm2.Globals;
@@ -12,9 +14,13 @@ import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.lib.OneArgFunction;
 import org.luaj.vm2.lib.ThreeArgFunction;
 import org.luaj.vm2.lib.TwoArgFunction;
+import org.luaj.vm2.lib.ZeroArgFunction;
 import org.luaj.vm2.lib.jse.JsePlatform;
+
 import ttrpgdash.OutputPanel;
+import ttrpgdash.entity.CharacterEntity;
 import ttrpgdash.entity.Entity;
+import ttrpgdash.entity.PlayerEntity;
 import ttrpgdash.log.LogController;
 import ttrpgdash.map.MapController;
 import ttrpgdash.scene.SceneController;
@@ -63,7 +69,7 @@ public final class ScriptEngine {
         this.logController = logController;
 
         globals = JsePlatform.standardGlobals();
-        sandbox();
+        sandboxGlobals(globals);
         globals.set("dashboard", buildDashboard());
     }
 
@@ -126,15 +132,91 @@ public final class ScriptEngine {
 
 
 
-    private void sandbox() {
-        globals.set("io", LuaValue.NIL);
-        globals.set("os", LuaValue.NIL);
-        globals.set("dofile", LuaValue.NIL);
-        globals.set("loadfile", LuaValue.NIL);
-        globals.set("load", LuaValue.NIL);
-        globals.set("require", LuaValue.NIL);
-        globals.set("package", LuaValue.NIL);
-        globals.set("debug", LuaValue.NIL);
+    /**
+     * Reads an {@code abilities.lua} file in an isolated sandbox and returns the
+     * ability names and descriptions without touching the main execution globals.
+     * Returns an empty list if the file cannot be read or defines no abilities table.
+     */
+    public List<String[]> getAbilityList(Path abilitiesFile) {
+        Globals temp = JsePlatform.standardGlobals();
+        sandboxGlobals(temp);
+        try {
+            temp.load(Files.readString(abilitiesFile),
+                    abilitiesFile.getFileName().toString()).call();
+            LuaValue raw = temp.get("abilities");
+            if (!raw.istable()) {
+                return List.of();
+            }
+            LuaTable table = (LuaTable) raw;
+            List<String[]> result = new ArrayList<>();
+            for (int i = 1; i <= table.length(); i++) {
+                LuaValue entry = table.get(i);
+                if (entry.istable()) {
+                    String abilityName = entry.get("name").optjstring("Ability " + i);
+                    String desc = entry.get("desc").optjstring("");
+                    result.add(new String[]{abilityName, desc});
+                }
+            }
+            return result;
+        } catch (LuaError | IOException e) {
+            outputPanel.log("SYSTEM", "Could not read abilities: " + e.getMessage());
+            return List.of();
+        }
+    }
+
+    /**
+     * Loads an {@code abilities.lua} file into the main runtime, sets {@code self}
+     * to the triggering entity so the script can reference it by name, then calls
+     * the {@code run()} function of the named ability.
+     *
+     * @param abilitiesFile path to the entity's {@code abilities.lua}
+     * @param abilityName   name matching the {@code name} field of an abilities entry
+     * @param entity        the entity whose token was right-clicked
+     */
+    public void runAbility(Path abilitiesFile, String abilityName, Entity entity) {
+        cancelRequested = false;
+        try {
+            globals.set("self", entityToTable(entity));
+            globals.load(Files.readString(abilitiesFile),
+                    abilitiesFile.getFileName().toString()).call();
+            LuaValue raw = globals.get("abilities");
+            if (!raw.istable()) {
+                outputPanel.log("SYSTEM", "No abilities table in " + abilitiesFile.getFileName());
+                return;
+            }
+            LuaTable table = (LuaTable) raw;
+            for (int i = 1; i <= table.length(); i++) {
+                LuaValue entry = table.get(i);
+                if (!entry.istable()) {
+                    continue;
+                }
+                if (abilityName.equals(entry.get("name").optjstring(""))) {
+                    LuaValue runFn = entry.get("run");
+                    if (runFn.isfunction()) {
+                        outputPanel.log("SCRIPT", abilityName + " [" + entity.getName() + "]");
+                        runFn.call();
+                    }
+                    return;
+                }
+            }
+            outputPanel.log("SYSTEM", "Ability not found: " + abilityName);
+        } catch (LuaError e) {
+            outputPanel.log("SYSTEM", "Error in " + abilityName + ": " + e.getMessage());
+        } catch (IOException e) {
+            outputPanel.log("SYSTEM", "Could not read " + abilitiesFile.getFileName()
+                    + ": " + e.getMessage());
+        }
+    }
+
+    private static void sandboxGlobals(Globals g) {
+        g.set("io", LuaValue.NIL);
+        g.set("os", LuaValue.NIL);
+        g.set("dofile", LuaValue.NIL);
+        g.set("loadfile", LuaValue.NIL);
+        g.set("load", LuaValue.NIL);
+        g.set("require", LuaValue.NIL);
+        g.set("package", LuaValue.NIL);
+        g.set("debug", LuaValue.NIL);
     }
 
     private LuaTable buildDashboard() {
@@ -275,6 +357,30 @@ public final class ScriptEngine {
                 outputPanel.log("SCRIPT", "Added " + (isPlayer ? "player" : "character")
                         + ": " + entityName + " (" + size + "ft)");
                 return LuaValue.NIL;
+            }
+        });
+
+        api.set("getPlayers", new ZeroArgFunction() {
+            @Override
+            public LuaValue call() {
+                LuaTable result = new LuaTable();
+                int idx = 1;
+                for (PlayerEntity p : sceneController.getActiveState().getPlayers()) {
+                    result.set(idx++, entityToTable(p));
+                }
+                return result;
+            }
+        });
+
+        api.set("getCharacters", new ZeroArgFunction() {
+            @Override
+            public LuaValue call() {
+                LuaTable result = new LuaTable();
+                int idx = 1;
+                for (CharacterEntity c : sceneController.getActiveState().getCharacters()) {
+                    result.set(idx++, entityToTable(c));
+                }
+                return result;
             }
         });
 

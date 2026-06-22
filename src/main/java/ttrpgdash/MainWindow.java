@@ -1,6 +1,9 @@
 package ttrpgdash;
 
 import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
 
 import javafx.geometry.Orientation;
 import javafx.geometry.Point2D;
@@ -40,13 +43,14 @@ import ttrpgdash.map.Token;
 import ttrpgdash.player.PlayerView;
 import ttrpgdash.project.ProjectManager;
 import ttrpgdash.replay.ReplayWindow;
-import ttrpgdash.script.ScriptEngine;
 import ttrpgdash.scene.SceneController;
 import ttrpgdash.scene.SceneEntry;
 import ttrpgdash.scene.SceneManager;
 import ttrpgdash.scene.ScenePanel;
 import ttrpgdash.scene.SceneState;
 import ttrpgdash.scene.SceneStateManager;
+import ttrpgdash.script.ScriptBrowserWindow;
+import ttrpgdash.script.ScriptEngine;
 import ttrpgdash.util.FileHelper;
 
 /**
@@ -69,6 +73,7 @@ public final class MainWindow {
     private UndoHandler undoHandler;
     private RedoHandler redoHandler;
     private ScriptEngine scriptEngine;
+    private ScriptBrowserWindow scriptBrowser;
 
     /**
      * Creates the window for the given scene manager.
@@ -333,7 +338,17 @@ public final class MainWindow {
             performRedo();
         });
 
-        bar.getMenus().addAll(fileMenu, mapMenu, viewMenu, undoMenu, redoMenu);
+        Menu scriptsMenu = new Menu("Scripts");
+        MenuItem openBrowser = new MenuItem("Open Script Browser…");
+        openBrowser.setOnAction(e -> {
+            if (scriptBrowser == null) {
+                scriptBrowser = new ScriptBrowserWindow(stage, scriptEngine);
+            }
+            scriptBrowser.show();
+        });
+        scriptsMenu.getItems().add(openBrowser);
+
+        bar.getMenus().addAll(fileMenu, mapMenu, viewMenu, scriptsMenu, undoMenu, redoMenu);
         return bar;
     }
 
@@ -366,6 +381,24 @@ public final class MainWindow {
         MenuItem viewDetails = new MenuItem("View Details");
         viewDetails.setOnAction(e -> showDetailsPopup(token.getEntity()));
         menu.getItems().add(viewDetails);
+
+        Path abilitiesPath = Paths.get(FileHelper.CHARACTERS_DIR + "/"
+                + token.getEntity().getName() + "/abilities.lua");
+        if (FileHelper.fileExists(abilitiesPath.toString())) {
+            List<String[]> abilities = scriptEngine.getAbilityList(abilitiesPath);
+            if (!abilities.isEmpty()) {
+                Menu runScriptMenu = new Menu("Run Script");
+                for (String[] ability : abilities) {
+                    String abilityName = ability[0];
+                    MenuItem item = new MenuItem(abilityName);
+                    item.setOnAction(e -> scriptEngine.runAbility(
+                            abilitiesPath, abilityName, token.getEntity()));
+                    runScriptMenu.getItems().add(item);
+                }
+                menu.getItems().add(new SeparatorMenuItem());
+                menu.getItems().add(runScriptMenu);
+            }
+        }
 
         menu.show(mapController.getMapCanvas().getScene().getWindow(),
                 screenPoint.getX(), screenPoint.getY());
